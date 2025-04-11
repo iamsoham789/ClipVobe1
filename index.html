@@ -1,0 +1,30 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>clipvobe-creator-hub</title>
+    <meta name="description" content="Lovable Generated Project" />
+    <meta name="author" content="Lovable" />
+    <meta property="og:image" content="/og-image.png" />
+    <!-- Preconnect to required domains -->
+    <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Add error handling for scripts
+      window.addEventListener('error', function(e) {
+        console.error('Script error:', e);
+        // If the root is empty, show a fallback error message
+        if (!document.getElementById('root').childNodes.length) {
+          document.getElementById('root').innerHTML = '<div style="font-family: sans-serif; padding: 20px; text-align: center;"><h2>Unable to load application</h2><p>There was a problem loading the application. Please refresh the page or try again later.</p></div>';
+        }
+      });
+    </script>
+  </body>
+</html>

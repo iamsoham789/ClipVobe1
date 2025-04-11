@@ -1,0 +1,17 @@
+{
+  "tasks": {
+    "serve": "deno run --allow-net --allow-env index.ts"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "strict": true,
+    "lib": ["deno.window", "dom"],
+    "types": ["@types/stripe"]
+  },
+  "importMap": "./import_map.json",
+  "lint": {
+    "files": {
+      "include": ["stripe-webhook/"]
+    }
+  }
+}
