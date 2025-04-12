@@ -61,6 +61,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({
 
             return (
               <button
+                key={item.id}
                 onClick={() => {
                   if (item.showPopup && onProfileClick) {
                     onProfileClick();
@@ -83,49 +84,53 @@ const SidebarNav: React.FC<SidebarNavProps> = ({
             );
           })}
 
-          {/* Custom Multi-Platform Post Generator Button */}
-          <button
-            onClick={() => setShowMultiPlatform(!showMultiPlatform)}
-            className={cn(
-              "w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors text-clipvobe-gray-400 hover:bg-clipvobe-gray-800 hover:text-white",
-              activeItem === "multi-platform-post-generator" ? "bg-clipvobe-cyan/10 text-clipvobe-cyan" : ""
-            )}
-          >
-            <span className="h-4 w-4">🌐</span> {/* Placeholder icon, replace with Lucide icon if desired */}
-            <span className="truncate">Multi-Platform Post Generator</span>
-          </button>
-
-          {/* Show sub-items when button is clicked */}
-          {showMultiPlatform && (
+          {/* Multi-Platform Post Generator Button placed after Script Generator */}
+          {items.find(item => item.id === "script-generator") && (
             <>
               <button
-                onClick={() => handleNavigation("tweet-generator")}
-                className="w-full flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-clipvobe-gray-400 hover:bg-clipvobe-gray-800 hover:text-white ml-4"
+                onClick={() => setShowMultiPlatform(!showMultiPlatform)}
+                className={cn(
+                  "w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors text-clipvobe-gray-400 hover:bg-clipvobe-gray-800 hover:text-white",
+                  activeItem === "multi-platform-post-generator" ? "bg-clipvobe-cyan/10 text-clipvobe-cyan" : ""
+                )}
               >
-                <span className="h-4 w-4">🐦</span> {/* Placeholder icon */}
-                <span className="truncate">Tweet Generator</span>
+                <span className="h-4 w-4">🌐</span> {/* Placeholder icon, replace with Lucide icon if desired */}
+                <span className="truncate">Multi-Platform Post Generator</span>
               </button>
-              <button
-                onClick={() => handleNavigation("youtube-community-post-generator")}
-                className="w-full flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-clipvobe-gray-400 hover:bg-clipvobe-gray-800 hover:text-white ml-4"
-              >
-                <span className="h-4 w-4">🎥</span> {/* Placeholder icon */}
-                <span className="truncate">YouTube Community Post Generator</span>
-              </button>
-              <button
-                onClick={() => handleNavigation("reddit-post-generator")}
-                className="w-full flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-clipvobe-gray-400 hover:bg-clipvobe-gray-800 hover:text-white ml-4"
-              >
-                <span className="h-4 w-4">🔴</span> {/* Placeholder icon */}
-                <span className="truncate">Reddit Post Generator</span>
-              </button>
-              <button
-                onClick={() => handleNavigation("linkedin-post-generator")}
-                className="w-full flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-clipvobe-gray-400 hover:bg-clipvobe-gray-800 hover:text-white ml-4"
-              >
-                <span className="h-4 w-4">💼</span> {/* Placeholder icon */}
-                <span className="truncate">LinkedIn Post Generator</span>
-              </button>
+
+              {/* Show sub-items when button is clicked */}
+              {showMultiPlatform && (
+                <>
+                  <button
+                    onClick={() => handleNavigation("tweet-generator")}
+                    className="w-full flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-clipvobe-gray-400 hover:bg-clipvobe-gray-800 hover:text-white ml-4"
+                  >
+                    <span className="h-4 w-4">🐦</span> {/* Placeholder icon */}
+                    <span className="truncate">Tweet Generator</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigation("youtube-community-post-generator")}
+                    className="w-full flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-clipvobe-gray-400 hover:bg-clipvobe-gray-800 hover:text-white ml-4"
+                  >
+                    <span className="h-4 w-4">🎥</span> {/* Placeholder icon */}
+                    <span className="truncate">YouTube Community Post Generator</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigation("reddit-post-generator")}
+                    className="w-full flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-clipvobe-gray-400 hover:bg-clipvobe-gray-800 hover:text-white ml-4"
+                  >
+                    <span className="h-4 w-4">🔴</span> {/* Placeholder icon */}
+                    <span className="truncate">Reddit Post Generator</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavigation("linkedin-post-generator")}
+                    className="w-full flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-clipvobe-gray-400 hover:bg-clipvobe-gray-800 hover:text-white ml-4"
+                  >
+                    <span className="h-4 w-4">💼</span> {/* Placeholder icon */}
+                    <span className="truncate">LinkedIn Post Generator</span>
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
