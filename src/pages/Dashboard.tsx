@@ -789,7 +789,7 @@ const Dashboard = () => {
                   >
                     <div className="flex flex-col max-w-4xl mx-auto">
                       <h1 className="text-5xl font-bold text-white text-center mb-10">
-                        Generate It All With A Single  <span className="text-clipvobe-cyan">Prompt</span>
+                        Generate it All with a Single  <span className="text-clipvobe-cyan">Prompt</span>
                       </h1>
                       
                       <div className="relative bg-black/30 backdrop-blur-md border border-white/10 rounded-xl p-1.5 shadow-xl">
