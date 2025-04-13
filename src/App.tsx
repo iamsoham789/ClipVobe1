@@ -14,7 +14,6 @@ import Privacy from "./pages/Privacy";
 import PaymentSuccessHandler from "./components/PaymentSuccessHandler";
 import Help from "./pages/Help";
 import Contact from "./pages/Contact";
-import Settings from "./components/dashboard/Settings";
 
 function App() {
   return (
@@ -32,7 +31,7 @@ function App() {
           <Route path="/payment-success" element={<PaymentSuccessHandler />} />
           <Route path="/help" element={<Help />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <PaymentSuccessHandler />

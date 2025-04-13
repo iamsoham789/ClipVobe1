@@ -224,14 +224,12 @@ const Settings: React.FC<SettingsProps> = ({
         }
       }
       setUsageStats(usageMap);
-      toast({
-        title: "Usage data refreshed",
+      toast("Usage data refreshed", {
         description: "Your usage statistics have been updated.",
       });
     } catch (error) {
       console.error("Error refreshing usage stats:", error);
-      toast({
-        title: "Error",
+      toast("Error", {
         description: "Failed to refresh usage data. Please try again.",
         variant: "destructive",
       });
@@ -349,8 +347,7 @@ const Settings: React.FC<SettingsProps> = ({
         throw new Error("Could not delete user account");
       }
       
-      toast({
-        title: "Account deleted",
+      toast("Account deleted", {
         description: "Your account has been successfully deleted.",
       });
       
@@ -362,15 +359,13 @@ const Settings: React.FC<SettingsProps> = ({
       try {
         await supabase.auth.signOut();
         
-        toast({
-          title: "Account partially deleted",
+        toast("Account partially deleted", {
           description: "Your data has been removed. Your account is being processed for deletion.",
         });
         
         navigate("/auth");
       } catch (fallbackError) {
-        toast({
-          title: "Error",
+        toast("Error", {
           description: "Failed to delete your account. Please try again later or contact support.",
           variant: "destructive",
         });
