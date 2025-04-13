@@ -32,9 +32,7 @@ function App() {
           <Route path="/payment-success" element={<Dashboard />} />
           <Route path="/help" element={<Help />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/settings" element={<Settings usageStats={{}} featureOptions={[]} tier={""} handleNavigation={function (itemId: string, subItemId?: string): void {
-            throw new Error("Function not implemented.");
-          } } />} />
+          <Route path="/settings" element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <PaymentSuccessHandler />

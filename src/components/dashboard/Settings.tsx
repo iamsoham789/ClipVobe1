@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "../../components/ui/button";
 import {
@@ -28,6 +29,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "../../components/ui/alert-dialog";
 
 interface FeatureOption {
@@ -45,10 +47,77 @@ interface SettingsProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
 
+// Default feature options to use if none are provided
+const defaultFeatureOptions: FeatureOption[] = [
+  {
+    id: "titles",
+    label: "Title Generator",
+    key: "titles",
+    supabaseFunction: "generate_titles",
+    navId: "video-titles",
+  },
+  {
+    id: "descriptions",
+    label: "Description Generator",
+    key: "descriptions",
+    supabaseFunction: "generate_descriptions",
+    navId: "video-descriptions",
+  },
+  {
+    id: "hashtags",
+    label: "Hashtag Generator",
+    key: "hashtags",
+    supabaseFunction: "generate_hashtags",
+    navId: "hashtags",
+  },
+  {
+    id: "ideas",
+    label: "Video Idea Generator",
+    key: "ideas",
+    supabaseFunction: "generate_ideas",
+    navId: "video-ideas",
+  },
+  {
+    id: "scripts",
+    label: "Script Generator",
+    key: "scripts",
+    supabaseFunction: "generate_scripts",
+    navId: "video-scripts",
+  },
+  {
+    id: "tweets",
+    label: "Tweet Generator",
+    key: "tweets",
+    supabaseFunction: "generate_tweets",
+    navId: "tweet-generator",
+  },
+  {
+    id: "youtubePosts",
+    label: "YouTube Post Generator",
+    key: "youtubePosts",
+    supabaseFunction: "generate_youtube_posts",
+    navId: "youtube-community-post-generator",
+  },
+  {
+    id: "redditPosts",
+    label: "Reddit Post Generator",
+    key: "redditPosts",
+    supabaseFunction: "generate_reddit_posts",
+    navId: "reddit-post-generator",
+  },
+  {
+    id: "linkedinPosts",
+    label: "LinkedIn Post Generator",
+    key: "linkedinPosts",
+    supabaseFunction: "generate_linkedin_posts",
+    navId: "linkedin-post-generator",
+  },
+];
+
 const Settings: React.FC<SettingsProps> = ({
-  usageStats: initialUsageStats,
-  featureOptions,
-  tier: initialTier,
+  usageStats: initialUsageStats = {},
+  featureOptions: propFeatureOptions,
+  tier: initialTier = "free",
   handleNavigation,
 }) => {
   const { user } = useAuth();
@@ -64,17 +133,21 @@ const Settings: React.FC<SettingsProps> = ({
   const [subscriptionDetails, setSubscriptionDetails] = useState<any>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const featureOptions = propFeatureOptions || defaultFeatureOptions;
 
+  // Update usage stats when initialUsageStats changes
   useEffect(() => {
     setUsageStats(initialUsageStats);
   }, [initialUsageStats]);
 
+  // Update tier when subscription changes
   useEffect(() => {
     if (subscription && typeof subscription === 'object' && 'tier' in subscription && subscription.tier && subscription.tier !== initialTier) {
       setTier(subscription.tier);
     }
   }, [subscription, initialTier]);
 
+  // Fetch subscription details
   useEffect(() => {
     const fetchSubscriptionDetails = async () => {
       if (!user) return;
@@ -104,6 +177,40 @@ const Settings: React.FC<SettingsProps> = ({
 
     fetchSubscriptionDetails();
   }, [user, tier]);
+
+  // Initial fetch of usage stats
+  useEffect(() => {
+    if (user && activeTab === "usage") {
+      refreshUsageStats();
+    }
+  }, [user, activeTab, tier]);
+
+  // Setup real-time subscription for usage updates
+  useEffect(() => {
+    if (!user) return;
+
+    // Setup real-time listener for usage changes
+    const usageChannel = supabase
+      .channel('usage-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'usage',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          console.log("Usage data changed, refreshing...");
+          refreshUsageStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      usageChannel.unsubscribe();
+    };
+  }, [user]);
 
   const refreshUsageStats = async () => {
     if (!user) return;
@@ -225,6 +332,7 @@ const Settings: React.FC<SettingsProps> = ({
     setIsDeleting(true);
     
     try {
+      // Delete subscription data
       const { error: subscriptionError } = await supabase
         .from("subscriptions")
         .delete()
@@ -234,6 +342,7 @@ const Settings: React.FC<SettingsProps> = ({
         console.error("Error deleting subscription data:", subscriptionError);
       }
       
+      // Delete usage data
       const { error: usageError } = await supabase
         .from("usage")
         .delete()
@@ -243,13 +352,16 @@ const Settings: React.FC<SettingsProps> = ({
         console.error("Error deleting usage data:", usageError);
       }
       
-      const { error: userError } = await supabase.auth.admin.deleteUser(user.id);
-      
-      if (userError) {
-        throw userError;
+      // Delete user account
+      // Note: This requires admin privileges, so it may not work without proper setup
+      try {
+        await supabase.rpc('delete_user');
+      } catch (rpcError) {
+        console.error("Error calling RPC to delete user:", rpcError);
+        // Fallback to signing out if admin delete fails
+        await supabase.auth.signOut();
+        throw new Error("Could not delete user account");
       }
-      
-      await supabase.auth.signOut();
       
       toast({
         title: "Account deleted",
@@ -262,10 +374,11 @@ const Settings: React.FC<SettingsProps> = ({
       console.error("Error deleting account:", error);
       
       try {
+        // Fallback: at least sign out the user
         await supabase.auth.signOut();
         
         toast({
-          title: "Account deleted",
+          title: "Account partially deleted",
           description: "Your data has been removed. Your account is being processed for deletion.",
         });
         
