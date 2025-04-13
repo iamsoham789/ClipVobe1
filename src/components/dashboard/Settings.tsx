@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "../../components/ui/button";
 import {
@@ -15,10 +14,21 @@ import {
   User,
   Settings as SettingsIcon,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
 import { supabase } from "../../integrations/supabase/client";
 import { useSubscription } from "../../hooks/use-subscription";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 
 interface FeatureOption {
   id: string;
@@ -52,14 +62,14 @@ const Settings: React.FC<SettingsProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("usage");
   const [subscriptionDetails, setSubscriptionDetails] = useState<any>(null);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    // Initialize with the passed stats
     setUsageStats(initialUsageStats);
   }, [initialUsageStats]);
 
   useEffect(() => {
-    // Make sure subscription exists and has a tier property before accessing it
     if (subscription && typeof subscription === 'object' && 'tier' in subscription && subscription.tier && subscription.tier !== initialTier) {
       setTier(subscription.tier);
     }
@@ -70,7 +80,6 @@ const Settings: React.FC<SettingsProps> = ({
       if (!user) return;
 
       try {
-        // Get subscription details from Supabase
         const { data, error } = await supabase
           .from("subscriptions")
           .select("*")
@@ -84,7 +93,6 @@ const Settings: React.FC<SettingsProps> = ({
 
         if (data) {
           setSubscriptionDetails(data);
-          // Update tier if it's different from what we have
           if (data.tier && typeof data.tier === 'string' && data.tier !== tier) {
             setTier(data.tier);
           }
@@ -211,6 +219,70 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      const { error: subscriptionError } = await supabase
+        .from("subscriptions")
+        .delete()
+        .eq("user_id", user.id);
+      
+      if (subscriptionError) {
+        console.error("Error deleting subscription data:", subscriptionError);
+      }
+      
+      const { error: usageError } = await supabase
+        .from("usage")
+        .delete()
+        .eq("user_id", user.id);
+      
+      if (usageError) {
+        console.error("Error deleting usage data:", usageError);
+      }
+      
+      const { error: userError } = await supabase.auth.admin.deleteUser(user.id);
+      
+      if (userError) {
+        throw userError;
+      }
+      
+      await supabase.auth.signOut();
+      
+      toast({
+        title: "Account deleted",
+        description: "Your account has been successfully deleted.",
+      });
+      
+      navigate("/");
+      
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      
+      try {
+        await supabase.auth.signOut();
+        
+        toast({
+          title: "Account deleted",
+          description: "Your data has been removed. Your account is being processed for deletion.",
+        });
+        
+        navigate("/auth");
+      } catch (fallbackError) {
+        toast({
+          title: "Error",
+          description: "Failed to delete your account. Please try again later or contact support.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteAlert(false);
+    }
+  };
+
   const planDetails = getPlanDetails();
 
   return (
@@ -232,7 +304,6 @@ const Settings: React.FC<SettingsProps> = ({
         </div>
       </div>
 
-      {/* Settings Navigation Tabs */}
       <div className="flex border-b border-clipvobe-gray-700 mb-6">
         <button
           className={`px-4 py-2 font-medium ${activeTab === "usage" ? "text-clipvobe-cyan border-b-2 border-clipvobe-cyan" : "text-clipvobe-gray-400 hover:text-white"}`}
@@ -272,7 +343,6 @@ const Settings: React.FC<SettingsProps> = ({
         </button>
       </div>
 
-      {/* Usage Overview Section */}
       {activeTab === "usage" && (
         <div className="mb-12">
           <div className="flex justify-between items-center mb-4">
@@ -285,7 +355,6 @@ const Settings: React.FC<SettingsProps> = ({
             {tier}).
           </p>
 
-          {/* Table View of Feature Usage */}
           <div className="bg-clipvobe-gray-800 rounded-xl overflow-hidden mb-8">
             <table className="w-full">
               <thead>
@@ -368,7 +437,6 @@ const Settings: React.FC<SettingsProps> = ({
         </div>
       )}
 
-      {/* Plan Overview Section */}
       {activeTab === "plan" && (
         <div className="mb-12">
           <h2 className="text-2xl font-semibold text-white mb-6">Your Plan</h2>
@@ -376,9 +444,7 @@ const Settings: React.FC<SettingsProps> = ({
           <div className="bg-clipvobe-gray-800 rounded-xl p-6 mb-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
               <div>
-                <p className="text-clipvobe-gray-400 text-sm">
-                  Current Subscription
-                </p>
+                <p className="text-clipvobe-gray-400 text-sm">Current Subscription</p>
                 <h3 className="text-2xl font-bold text-white">
                   {planDetails.name}
                 </h3>
@@ -454,7 +520,6 @@ const Settings: React.FC<SettingsProps> = ({
         </div>
       )}
 
-      {/* Account Section */}
       {activeTab === "account" && (
         <div className="mb-12">
           <h2 className="text-2xl font-semibold text-white mb-6">
@@ -489,7 +554,7 @@ const Settings: React.FC<SettingsProps> = ({
                 variant="outline"
                 className="border-clipvobe-cyan text-clipvobe-cyan hover:bg-clipvobe-cyan/10"
               >
-                
+                Update Profile
               </Button>
             </div>
           </div>
@@ -506,14 +571,15 @@ const Settings: React.FC<SettingsProps> = ({
             <Button
               variant="outline"
               className="border-red-500 text-red-500 hover:bg-red-500/10"
+              onClick={() => setShowDeleteAlert(true)}
             >
+              <Trash2 className="h-4 w-4 mr-2" />
               Delete Account
             </Button>
           </div>
         </div>
       )}
 
-      {/* Help & Support Section */}
       {activeTab === "help" && (
         <div className="mb-12">
           <h2 className="text-2xl font-semibold text-white mb-6">
@@ -596,6 +662,35 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         </div>
       )}
+
+      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+        <AlertDialogContent className="bg-clipvobe-gray-800 border-clipvobe-gray-700 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription className="text-clipvobe-gray-300">
+              This action cannot be undone. This will permanently delete your
+              account and remove all your data from our servers, including:
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Your profile information</li>
+                <li>Your subscription and payment history</li>
+                <li>All content and usage data</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-clipvobe-gray-700 text-white border-clipvobe-gray-600 hover:bg-clipvobe-gray-600">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              className="bg-red-500 text-white hover:bg-red-600"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Yes, Delete My Account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
