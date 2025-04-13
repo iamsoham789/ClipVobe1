@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../integrations/supabase/client";
@@ -84,18 +85,45 @@ const PaymentSuccessHandler = () => {
 
           // Reset usage counts for the user
           try {
-            const { error: usageError } = await supabase
+            // First, check if usage records exist for this user
+            const { data: existingUsage } = await supabase
               .from("usage")
-              .update({
-                count: 0,
-                reset_at: new Date(
-                  Date.now() + 30 * 24 * 60 * 60 * 1000,
-                ).toISOString(),
-              })
+              .select("feature")
               .eq("user_id", user.id);
 
-            if (usageError) {
-              console.error("Error resetting usage counts:", usageError);
+            if (!existingUsage || existingUsage.length === 0) {
+              // Create usage records for all features if they don't exist
+              const features = [
+                "titles", "descriptions", "hashtags", "ideas", "scripts",
+                "tweets", "youtubePosts", "redditPosts", "linkedinPosts"
+              ];
+              
+              const resetDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+              
+              // Create usage records for each feature
+              for (const feature of features) {
+                await supabase.from("usage").insert({
+                  user_id: user.id,
+                  feature,
+                  count: 0,
+                  reset_at: resetDate.toISOString(),
+                });
+              }
+            } else {
+              // Reset existing usage records
+              const { error: usageError } = await supabase
+                .from("usage")
+                .update({
+                  count: 0,
+                  reset_at: new Date(
+                    Date.now() + 30 * 24 * 60 * 60 * 1000,
+                  ).toISOString(),
+                })
+                .eq("user_id", user.id);
+
+              if (usageError) {
+                console.error("Error resetting usage counts:", usageError);
+              }
             }
           } catch (usageResetError) {
             console.error("Error during usage reset:", usageResetError);
