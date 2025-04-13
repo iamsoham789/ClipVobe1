@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../lib/utils";
-import { LucideIcon, HelpCircle, Mail, Twitter, Youtube, LogIn } from "lucide-react";
+import { LucideIcon, HelpCircle, Mail, Twitter, Youtube, LogIn, Settings } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -36,7 +36,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({
   onProfileClick,
 }) => {
   const navigate = useNavigate();
-  const [showMultiPlatform, setShowMultiPlatform] = useState(false); // Simple state to toggle visibility
+  const [showMultiPlatform, setShowMultiPlatform] = useState(false);
 
   return (
     <nav

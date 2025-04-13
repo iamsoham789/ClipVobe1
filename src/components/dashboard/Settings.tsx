@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "../../components/ui/button";
 import {
@@ -17,7 +16,7 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import { useToast } from "../../hooks/use-toast";
+import { toast } from "sonner";
 import { supabase } from "../../integrations/supabase/client";
 import { useSubscription } from "../../hooks/use-subscription";
 import {
@@ -47,7 +46,6 @@ interface SettingsProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
 
-// Default feature options to use if none are provided
 const defaultFeatureOptions: FeatureOption[] = [
   {
     id: "titles",
@@ -122,7 +120,6 @@ const Settings: React.FC<SettingsProps> = ({
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { subscription, loading: subscriptionLoading } = useSubscription(
     user?.id,
   );
@@ -135,19 +132,16 @@ const Settings: React.FC<SettingsProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const featureOptions = propFeatureOptions || defaultFeatureOptions;
 
-  // Update usage stats when initialUsageStats changes
   useEffect(() => {
     setUsageStats(initialUsageStats);
   }, [initialUsageStats]);
 
-  // Update tier when subscription changes
   useEffect(() => {
     if (subscription && typeof subscription === 'object' && 'tier' in subscription && subscription.tier && subscription.tier !== initialTier) {
       setTier(subscription.tier);
     }
   }, [subscription, initialTier]);
 
-  // Fetch subscription details
   useEffect(() => {
     const fetchSubscriptionDetails = async () => {
       if (!user) return;
@@ -178,18 +172,15 @@ const Settings: React.FC<SettingsProps> = ({
     fetchSubscriptionDetails();
   }, [user, tier]);
 
-  // Initial fetch of usage stats
   useEffect(() => {
     if (user && activeTab === "usage") {
       refreshUsageStats();
     }
   }, [user, activeTab, tier]);
 
-  // Setup real-time subscription for usage updates
   useEffect(() => {
     if (!user) return;
 
-    // Setup real-time listener for usage changes
     const usageChannel = supabase
       .channel('usage-changes')
       .on(
@@ -332,7 +323,6 @@ const Settings: React.FC<SettingsProps> = ({
     setIsDeleting(true);
     
     try {
-      // Delete subscription data
       const { error: subscriptionError } = await supabase
         .from("subscriptions")
         .delete()
@@ -342,7 +332,6 @@ const Settings: React.FC<SettingsProps> = ({
         console.error("Error deleting subscription data:", subscriptionError);
       }
       
-      // Delete usage data
       const { error: usageError } = await supabase
         .from("usage")
         .delete()
@@ -352,13 +341,10 @@ const Settings: React.FC<SettingsProps> = ({
         console.error("Error deleting usage data:", usageError);
       }
       
-      // Delete user account
-      // Note: This requires admin privileges, so it may not work without proper setup
       try {
         await supabase.rpc('delete_user');
       } catch (rpcError) {
         console.error("Error calling RPC to delete user:", rpcError);
-        // Fallback to signing out if admin delete fails
         await supabase.auth.signOut();
         throw new Error("Could not delete user account");
       }
@@ -374,7 +360,6 @@ const Settings: React.FC<SettingsProps> = ({
       console.error("Error deleting account:", error);
       
       try {
-        // Fallback: at least sign out the user
         await supabase.auth.signOut();
         
         toast({
@@ -398,8 +383,12 @@ const Settings: React.FC<SettingsProps> = ({
 
   const planDetails = getPlanDetails();
 
+  const safeHandleNavigation = handleNavigation || ((itemId: string, subItemId?: string) => {
+    navigate(`/dashboard/${itemId}`);
+  });
+
   return (
-    <div className="p-6">
+    <div className="p-6 bg-clipvobe-dark min-h-screen">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-white">Settings</h1>
         <div className="flex space-x-2">
@@ -536,7 +525,7 @@ const Settings: React.FC<SettingsProps> = ({
                           variant="ghost"
                           size="sm"
                           className="text-clipvobe-cyan hover:bg-clipvobe-cyan/10"
-                          onClick={() => handleNavigation(feature.navId)}
+                          onClick={() => safeHandleNavigation(feature.navId)}
                         >
                           Go to Generator
                         </Button>

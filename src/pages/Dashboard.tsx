@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
@@ -169,6 +170,10 @@ const Dashboard = () => {
     console.log("Navigation triggered:", { itemId, subItemId });
     if (itemId === "profile") {
       handleProfileClick();
+      return;
+    }
+    if (itemId === "settings") {
+      navigate("/settings");
       return;
     }
     setActiveItem(itemId);

@@ -29,10 +29,10 @@ function App() {
           <Route path="/blog" element={<Blog />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
-          <Route path="/payment-success" element={<Dashboard />} />
+          <Route path="/payment-success" element={<PaymentSuccessHandler />} />
           <Route path="/help" element={<Help />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/settings" element={<Dashboard />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <PaymentSuccessHandler />
