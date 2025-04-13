@@ -13,7 +13,7 @@ const PaymentSuccessHandler = () => {
 
   useEffect(() => {
     const handlePaymentSuccess = async () => {
-      // Parse URL parameters
+      // Parse URL parameters from Dodo Payments redirect
       const params = new URLSearchParams(location.search);
       const paymentId = params.get("payment_id") || params.get("id"); // Support both payment_id and id parameters
       const plan = params.get("plan");
@@ -58,10 +58,10 @@ const PaymentSuccessHandler = () => {
             payment_id: paymentId,
             current_period_start: new Date().toISOString(),
             current_period_end: new Date(
-              Date.now() + 30 * 24 * 60 * 60 * 1000,
+              Date.now() + 30 * 24 * 60 * 60 * 1000
             ).toISOString(), // 30 days from now
           },
-          { onConflict: "user_id" },
+          { onConflict: "user_id" }
         );
 
         if (error) {
@@ -116,7 +116,7 @@ const PaymentSuccessHandler = () => {
                 .update({
                   count: 0,
                   reset_at: new Date(
-                    Date.now() + 30 * 24 * 60 * 60 * 1000,
+                    Date.now() + 30 * 24 * 60 * 60 * 1000
                   ).toISOString(),
                 })
                 .eq("user_id", user.id);

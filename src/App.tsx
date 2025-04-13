@@ -12,14 +12,14 @@ import Blog from "./pages/Blog";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import PaymentSuccessHandler from "./components/PaymentSuccessHandler";
-import Help from "./pages/Help"; // adjust the path if different
-import Contact from "./pages/Contact"; // adjus
+import Help from "./pages/Help";
+import Contact from "./pages/Contact";
 import Settings from "./components/dashboard/Settings";
+
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <PaymentSuccessHandler />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
@@ -37,6 +37,7 @@ function App() {
           } } />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <PaymentSuccessHandler />
         <Toaster 
           position="top-right" 
           closeButton={true}
