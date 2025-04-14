@@ -14,7 +14,7 @@ interface SubscriptionDetails {
 interface SubscriptionRow {
   tier: string;
   status: string;
-  expires_at: string | null;
+  current_period_end: string | null;
 }
 
 export function useSubscription(userId?: string) {
@@ -37,7 +37,7 @@ export function useSubscription(userId?: string) {
         // Explicitly type the query result
         const { data: subscriptionData, error: subError } = await supabase
           .from('subscriptions')
-          .select('tier, status, expires_at')
+          .select('tier, status, current_period_end')
           .eq('user_id', userId)
           .maybeSingle() as { data: SubscriptionRow | null; error: any };
 
@@ -53,7 +53,7 @@ export function useSubscription(userId?: string) {
               user_id: userId,
               tier: 'free',
               status: 'active',
-              expires_at: null
+              current_period_end: null
             });
             
           if (insertError) {
@@ -72,7 +72,7 @@ export function useSubscription(userId?: string) {
         setSubscription({
           tier: subscriptionData.tier as SubscriptionTier, // Cast to SubscriptionTier
           isActive: subscriptionData.status === 'active',
-          expiresAt: subscriptionData.expires_at,
+          expiresAt: subscriptionData.current_period_end,
         });
       } catch (err) {
         console.error('Error fetching subscription:', err);

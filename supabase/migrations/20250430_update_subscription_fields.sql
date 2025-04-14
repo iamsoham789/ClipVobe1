@@ -59,4 +59,3 @@ CREATE POLICY "Allow authenticated users to read only their own usage"
   ON public.usage
   FOR SELECT
   USING (auth.uid() = user_id);
-

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Home, Copy } from 'lucide-react';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { canGenerate, updateUsage } from './usageLimits';
 import { useNavigate } from 'react-router-dom';
 import RestrictedFeatureRedirect from './RestrictedFeatureRedirect';
+import { useSubscription } from '@/hooks/use-subscription';
 
 interface TweetGeneratorProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
@@ -16,8 +17,26 @@ const TweetGenerator: React.FC<TweetGeneratorProps> = ({ handleNavigation }) => 
   const [tweet, setTweet] = useState('');
   const [generatedTweets, setGeneratedTweets] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [remainingRequests, setRemainingRequests] = useState<number | null>(null);
   const { user } = useAuth();
+  const { tier } = useSubscription(user?.id);
   const navigate = useNavigate();
+
+  // Fetch remaining requests on component mount
+  useEffect(() => {
+    if (user) {
+      const fetchRemainingRequests = async () => {
+        try {
+          const remaining = await canGenerate(user.id, "tweets", tier);
+          setRemainingRequests(remaining);
+        } catch (error) {
+          console.error("Error fetching remaining requests:", error);
+        }
+      };
+      
+      fetchRemainingRequests();
+    }
+  }, [user, tier]);
 
   const generateTweet = async () => {
     if (!user) {
@@ -29,10 +48,11 @@ const TweetGenerator: React.FC<TweetGeneratorProps> = ({ handleNavigation }) => 
     setIsLoading(true);
 
     try {
-      // Check usage limits
-      const canUseFeature = await canGenerate(user.id, "tweets");
+      // Check if user can use this feature based on their subscription
+      const canUseFeature = await canGenerate(user.id, "tweets", tier);
+      
       if (!canUseFeature) {
-        toast.error("You've reached your tweet generation limit. Upgrade your plan!");
+        toast.error("You've reached your tweet generation limit or don't have access to this feature");
         navigate('/pricing');
         return;
       }
@@ -42,8 +62,8 @@ const TweetGenerator: React.FC<TweetGeneratorProps> = ({ handleNavigation }) => 
         return;
       }
 
-      // Generate tweets using Google's Gemini API (directly or via edge function)
-      const apiKey = "AIzaSyC2WcxsrgdSqzfDoFH4wh1WvPo1pXTIYKc"; // Replace with environment variable in production
+      // Generate tweets using Google's Gemini API
+      const apiKey = "AIzaSyC2WcxsrgdSqzfDoFH4wh1WvPo1pXTIYKc"; 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
         {
@@ -84,7 +104,11 @@ const TweetGenerator: React.FC<TweetGeneratorProps> = ({ handleNavigation }) => 
       setGeneratedTweets(tweetList);
       
       // Update usage count
-      await updateUsage(user.id, "tweets");
+      await updateUsage(user.id, "tweets", tier);
+      
+      // Update remaining requests
+      const remaining = await canGenerate(user.id, "tweets", tier);
+      setRemainingRequests(remaining);
       
       toast.success("Tweets generated successfully!");
     } catch (error: any) {
@@ -101,7 +125,7 @@ const TweetGenerator: React.FC<TweetGeneratorProps> = ({ handleNavigation }) => 
   };
 
   return (
-    <RestrictedFeatureRedirect featureName="Tweet Generator">
+    <RestrictedFeatureRedirect featureName="tweets">
       <div className="space-y-6">
         <div className="flex items-center mb-2">
           <button
@@ -119,6 +143,11 @@ const TweetGenerator: React.FC<TweetGeneratorProps> = ({ handleNavigation }) => 
         <h2 className="text-2xl font-bold text-white">AI Tweet Generator</h2>
         <p className="text-gray-300">
           Enter a topic or theme, and our AI will generate engaging tweet options for you.
+          {remainingRequests !== null && (
+            <span className="ml-2 text-cyan-400">
+              {remainingRequests} {tier === 'pro' ? 'unlimited' : 'requests'} remaining
+            </span>
+          )}
         </p>
 
         <div className="glass-card p-6 rounded-xl space-y-4">
@@ -137,12 +166,22 @@ const TweetGenerator: React.FC<TweetGeneratorProps> = ({ handleNavigation }) => 
           </div>
           <Button
             onClick={generateTweet}
-            disabled={!tweet.trim() || isLoading}
-            isLoading={isLoading}
+            disabled={!tweet.trim() || isLoading || remainingRequests === 0}
             className="w-full"
           >
-            Generate Tweets
+            {isLoading ? "Generating..." : "Generate Tweets"}
           </Button>
+          {remainingRequests === 0 && (
+            <p className="text-red-400 text-sm">
+              You've reached your tweet generation limit. 
+              <button 
+                onClick={() => navigate('/pricing')} 
+                className="text-cyan-400 ml-1 underline"
+              >
+                Upgrade your plan
+              </button>
+            </p>
+          )}
         </div>
 
         {generatedTweets.length > 0 && (

@@ -1,5 +1,5 @@
 
-import { supabase } from "../../integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 export type FeatureType =
   | "titles"
@@ -12,7 +12,7 @@ export type FeatureType =
   | "redditPosts"
   | "linkedinPosts";
 
-// Update subscription limits to match new pricing tiers
+// Subscription limits match the pricing tiers
 export const subscriptionLimits: Record<string, Record<FeatureType, number>> = {
   free: {
     titles: 2,
@@ -49,12 +49,22 @@ export const subscriptionLimits: Record<string, Record<FeatureType, number>> = {
   },
 };
 
+/**
+ * Get remaining uses for a feature based on the user's subscription tier
+ */
 export const getRemainingUses = async (
   userId: string,
   feature: FeatureType,
   tier: string = "free",
 ): Promise<number> => {
   try {
+    // Check if the feature is available in this tier
+    const maxLimit = subscriptionLimits[tier]?.[feature] || 0;
+    if (maxLimit === 0) {
+      return 0; // Feature not available in this tier
+    }
+
+    // Get current usage count
     const { data, error } = await supabase
       .from("usage")
       .select("count")
@@ -65,15 +75,14 @@ export const getRemainingUses = async (
     if (error) {
       if (error.code === "PGRST116") {
         // No record found, return the full limit
-        return subscriptionLimits[tier][feature] || 0;
+        return maxLimit;
       }
       console.error("Error fetching usage:", error);
-      return subscriptionLimits[tier][feature] || 0;
+      return maxLimit;
     }
 
-    // Use optional chaining and null check
+    // Calculate remaining uses
     const currentCount = data && typeof data === 'object' && 'count' in data ? (data as {count: number}).count : 0;
-    const maxLimit = subscriptionLimits[tier][feature] || 0;
     return Math.max(0, maxLimit - currentCount);
   } catch (error) {
     console.error("Error in getRemainingUses:", error);
@@ -81,28 +90,38 @@ export const getRemainingUses = async (
   }
 };
 
+/**
+ * Check if the user can use a feature based on their subscription and usage
+ */
 export const canGenerate = async (
   userId: string,
   feature: FeatureType,
   tier: string = "free",
-): Promise<boolean> => {
+): Promise<number> => {
   // Check if the feature is available in this tier
   if (subscriptionLimits[tier]?.[feature] === 0) {
-    return false;
+    return 0;
   }
 
-  // For all tiers, check remaining uses
-  const remainingUses = await getRemainingUses(userId, feature, tier);
-  return remainingUses > 0;
+  // Get remaining uses
+  return await getRemainingUses(userId, feature, tier);
 };
 
+/**
+ * Update usage count for a feature
+ */
 export const updateUsage = async (
   userId: string,
   feature: FeatureType,
   tier: string = "free",
 ): Promise<void> => {
-  // Only track usage for all tiers now
+  // Only track usage if the feature has a limit in this tier
+  if (subscriptionLimits[tier]?.[feature] === 0) {
+    return;
+  }
+
   try {
+    // Get current usage
     const { data, error: fetchError } = await supabase
       .from("usage")
       .select("count")
@@ -125,6 +144,7 @@ export const updateUsage = async (
     const resetAt = new Date();
     resetAt.setMonth(resetAt.getMonth() + 1);
 
+    // Update or insert usage record
     const { error: upsertError } = await supabase
       .from("usage")
       .upsert(

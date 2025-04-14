@@ -3,9 +3,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PaymentButton } from '@/components/PaymentButton';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { loadStripe } from '@stripe/stripe-js';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PricingTier {
   name: string;
@@ -13,13 +15,18 @@ interface PricingTier {
   features: { feature: string; value: string }[];
   popular?: boolean;
   plan?: "free" | "basic" | "pro";
+  priceId?: string;
 }
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const Pricing = () => {
   const [inView, setInView] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
   const [isIndianUser, setIsIndianUser] = useState(false);
   const { user } = useAuth();
+  const [loading, setLoading] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Detect if user appears to be from India based on timezone
   useEffect(() => {
@@ -48,6 +55,7 @@ const Pricing = () => {
       name: "Basic",
       price: { usd: "9", inr: "750" },
       plan: "basic",
+      priceId: import.meta.env.VITE_STRIPE_BASIC_PRICE_ID,
       features: [
         { feature: "AI Video Titles", value: "150 titles (30 requests)" },
         { feature: "AI Video Descriptions", value: "25 descriptions (25 requests)" },
@@ -64,6 +72,7 @@ const Pricing = () => {
       name: "Pro",
       price: { usd: "39", inr: "3200" },
       plan: "pro",
+      priceId: import.meta.env.VITE_STRIPE_UNLIMITED_PRICE_ID,
       features: [
         { feature: "AI Video Titles", value: "Unlimited titles" },
         { feature: "AI Video Descriptions", value: "Unlimited descriptions" },
@@ -95,6 +104,59 @@ const Pricing = () => {
     if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
+
+  const handleStripeCheckout = async (tier: PricingTier) => {
+    if (!user) {
+      toast.error("Please sign in to purchase a subscription");
+      navigate("/auth");
+      return;
+    }
+
+    setLoading(tier.plan || null);
+    toast.info(`Preparing ${tier.name} plan checkout...`);
+
+    try {
+      // Create Stripe Checkout Session
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error("Stripe failed to initialize");
+      }
+
+      // Create a checkout session
+      const response = await fetch(`${import.meta.env.VITE_APP_URL || window.location.origin}/api/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({
+          priceId: tier.priceId,
+          plan: tier.plan,
+          userId: user.id
+        }),
+      });
+
+      const session = await response.json();
+      
+      if (!session || !session.id) {
+        throw new Error("Failed to create checkout session");
+      }
+
+      // Redirect to Stripe Checkout
+      const result = await stripe.redirectToCheckout({
+        sessionId: session.id,
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      toast.error("Payment processing failed. Please try again.");
+    } finally {
+      setLoading(null);
+    }
+  };
 
   return (
     <section id="pricing" ref={sectionRef} className="py-20 bg-gray-900">
@@ -153,14 +215,14 @@ const Pricing = () => {
                   </Button>
                 </Link>
               ) : (
-                <PaymentButton
-                  plan={tier.plan as "basic" | "pro"}
-                  price={Number(tier.price.usd)}
+                <Button
+                  onClick={() => handleStripeCheckout(tier)}
+                  disabled={loading === tier.plan}
                   variant={tier.popular ? "secondary" : "default"}
                   className="w-full"
                 >
-                  Get Started
-                </PaymentButton>
+                  {loading === tier.plan ? "Processing..." : "Get Started"}
+                </Button>
               )}
             </div>
           ))}
@@ -219,7 +281,7 @@ const Pricing = () => {
           <div>
             <h4 className="text-xl font-semibold text-white">Is this a subscription?</h4>
             <p className="text-gray-300">
-              Currently, plans are one-time purchases. You'll need to repurchase monthly.
+              Yes, plans are monthly subscriptions that automatically renew. You can cancel anytime from your account dashboard.
             </p>
           </div>
         </div>
