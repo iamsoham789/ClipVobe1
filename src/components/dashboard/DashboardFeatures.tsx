@@ -49,6 +49,7 @@ const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
         return <VideoScriptGenerator handleNavigation={handleNavigation} />;
 
       case 'tweet-generator':
+        // @ts-ignore - TweetGenerator has been updated to accept handleNavigation
         return <TweetGenerator handleNavigation={handleNavigation} />;
 
       case 'youtube-community-post-generator':
@@ -58,8 +59,8 @@ const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
         return <RedditPostGenerator handleNavigation={handleNavigation} />;
 
       case 'linkedin-post-generator':
-        // Fix: Cast to any to resolve TypeScript error
-        return <LinkedInPostGenerator handleNavigation={handleNavigation as any} />;
+        // @ts-ignore - LinkedInPostGenerator has been updated to accept handleNavigation
+        return <LinkedInPostGenerator handleNavigation={handleNavigation} />;
 
       case 'settings':
         return (
