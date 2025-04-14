@@ -199,7 +199,7 @@ const CyberpunkPricing = () => {
                 <PaymentButton
                   paymentLink={tier.paymentLink}
                   variant={tier.popular ? "secondary" : "default"}
-                  plan={tier.name.toLowerCase()}
+                  plan={tier.name.toLowerCase() === "basic" ? "basic" : "pro"}
                 >
                   Get Started with {tier.name}
                 </PaymentButton>

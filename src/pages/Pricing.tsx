@@ -1,10 +1,10 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PaymentButton } from "@/components/PaymentButton";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 
 interface PricingTier {
   name: string;
@@ -20,7 +20,6 @@ const Pricing = () => {
   const [isIndianUser, setIsIndianUser] = useState(false);
   const { user } = useAuth();
 
-  // Detect if user appears to be from India based on timezone
   useEffect(() => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setIsIndianUser(timezone.includes("Asia/Kolkata") || timezone.includes("India"));
@@ -97,7 +96,6 @@ const Pricing = () => {
 
   return (
     <section id="pricing" ref={sectionRef} className="py-20 bg-gray-900">
-      {/* Pricing Cards */}
       <div className="container mx-auto px-4">
         <h2 className="text-4xl font-bold text-white text-center mb-8">
           Pricing Plans
@@ -170,7 +168,6 @@ const Pricing = () => {
         </div>
       </div>
 
-      {/* Features Matrix Table */}
       <div className="container mx-auto px-4 mt-16">
         <h3 className="text-3xl font-bold text-white text-center mb-8">
           Feature Comparison
@@ -207,7 +204,6 @@ const Pricing = () => {
         </div>
       </div>
 
-      {/* FAQs */}
       <div className="container mx-auto px-4 mt-16">
         <h3 className="text-3xl font-bold text-white text-center mb-8">
           Frequently Asked Questions

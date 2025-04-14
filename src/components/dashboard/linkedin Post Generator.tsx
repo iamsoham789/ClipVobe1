@@ -6,7 +6,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { canGenerate, updateUsage } from './usageLimits';
 import RestrictedFeatureRedirect from './RestrictedFeatureRedirect';
 
-const LinkedinPostGenerator = () => {
+interface LinkedinPostGeneratorProps {
+  handleNavigation: (itemId: string, subItemId?: string) => void;
+}
+
+const LinkedinPostGenerator: React.FC<LinkedinPostGeneratorProps> = ({ handleNavigation }) => {
   const [loading, setLoading] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [results, setResults] = useState<string[]>([]);

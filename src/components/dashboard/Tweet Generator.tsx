@@ -9,9 +9,11 @@ import { useSubscription } from '../../hooks/use-subscription';
 import { useNavigate } from 'react-router-dom';
 import RestrictedFeatureRedirect from './RestrictedFeatureRedirect';
 
-const TweetGenerator: React.FC<{
+interface TweetGeneratorProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
-}> = ({ handleNavigation }) => {
+}
+
+const TweetGenerator: React.FC<TweetGeneratorProps> = ({ handleNavigation }) => {
   const [tweet, setTweet] = useState('');
   const [generatedTweets, setGeneratedTweets] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
