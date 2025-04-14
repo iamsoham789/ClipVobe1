@@ -3,19 +3,22 @@ import React, { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PaymentButton } from "@/components/PaymentButton";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PricingTier {
   name: string;
   price: { usd: string; inr?: string };
-  paymentLink: string;
   features: { feature: string; value: string }[];
   popular?: boolean;
+  plan?: "free" | "basic" | "pro";
 }
 
 const Pricing = () => {
   const [inView, setInView] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
   const [isIndianUser, setIsIndianUser] = useState(false);
+  const { user } = useAuth();
 
   // Detect if user appears to be from India based on timezone
   useEffect(() => {
@@ -27,7 +30,7 @@ const Pricing = () => {
     {
       name: "Free",
       price: { usd: "0" },
-      paymentLink: "",
+      plan: "free",
       features: [
         { feature: "AI Video Titles", value: "10 titles (2 requests)" },
         { feature: "AI Video Descriptions", value: "2 descriptions (2 requests)" },
@@ -43,8 +46,7 @@ const Pricing = () => {
     {
       name: "Basic",
       price: { usd: "9", inr: "750" },
-      paymentLink:
-        "https://test.checkout.dodopayments.com/buy/pdt_37OmHU8uiE15P3QpAD3QJ?quantity=1&redirect_url=https://localhost%3A5174%2Fdashboard",
+      plan: "basic",
       features: [
         { feature: "AI Video Titles", value: "150 titles (30 requests)" },
         { feature: "AI Video Descriptions", value: "25 descriptions (25 requests)" },
@@ -60,8 +62,7 @@ const Pricing = () => {
     {
       name: "Pro",
       price: { usd: "39", inr: "3200" },
-      paymentLink:
-        "https://test.checkout.dodopayments.com/buy/pdt_CxiYxjkXQYeomry5Qy7p2?quantity=1&redirect_url=https://localhost%3A5174%2Fdashboard",
+      plan: "pro",
       features: [
         { feature: "AI Video Titles", value: "Unlimited titles" },
         { feature: "AI Video Descriptions", value: "Unlimited descriptions" },
@@ -147,18 +148,19 @@ const Pricing = () => {
                 ))}
               </ul>
               {tier.name === "Free" ? (
-                <button 
-                  className="w-full py-2 rounded-md bg-gray-700 text-white font-medium"
-                  disabled
-                >
-                  Current Plan
-                </button>
+                <Link to={user ? "/dashboard" : "/auth"}>
+                  <Button 
+                    className="w-full py-2 rounded-md bg-gray-700 text-white font-medium"
+                  >
+                    {user ? "Current Plan" : "Sign Up Free"}
+                  </Button>
+                </Link>
               ) : (
                 <PaymentButton
-                  paymentLink={tier.paymentLink}
+                  plan={tier.plan as "basic" | "pro"}
+                  price={Number(tier.price.usd)}
                   variant={tier.popular ? "secondary" : "default"}
                   className="w-full"
-                  plan={tier.name.toLowerCase()}
                 >
                   Get Started
                 </PaymentButton>

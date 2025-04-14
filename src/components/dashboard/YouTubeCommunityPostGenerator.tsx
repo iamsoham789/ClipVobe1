@@ -1,231 +1,179 @@
+
 import React, { useState } from 'react';
-import { Home, Copy } from 'lucide-react';
-import { Button } from '../ui/button';
 import { toast } from 'sonner';
 import { supabase } from '../../integrations/supabase/client';
-import { canGenerate, updateUsage } from './usageLimits';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSubscription } from '../../hooks/use-subscription';
-import { useNavigate } from 'react-router-dom';
+import { canGenerate, updateUsage } from './usageLimits';
 import RestrictedFeatureRedirect from './RestrictedFeatureRedirect';
 
-const YouTubeCommunityPostGenerator: React.FC<{
-  handleNavigation: (itemId: string, subItemId?: string) => void;
-}> = ({ handleNavigation }) => {
-  const [postTopic, setPostTopic] = useState('');
-  const [generatedPost, setGeneratedPost] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('English');
-  const [selectedMotive, setSelectedMotive] = useState('New Video Announcement');
-  const { toast } = useToast();
+const YouTubeCommunityPostGenerator = () => {
+  const [loading, setLoading] = useState(false);
+  const [prompt, setPrompt] = useState('');
+  const [results, setResults] = useState<string[]>([]);
+  const [selectedPost, setSelectedPost] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const { user } = useAuth();
-  const { tier } = useSubscription();
-  const navigate = useNavigate();
-
-  const languages = [
-    { code: 'en', name: 'English' },
-    { code: 'hi', name: 'Hindi' },
-    { code: 'ru', name: 'Russian' },
-    { code: 'pt', name: 'Portuguese' },
-    { code: 'es', name: 'Spanish' },
-    { code: 'fr', name: 'French' },
-  ];
-
-  const motives = [
-    'New Video Announcement',
-    'Congrats for Festival',
-    'Other',
-  ];
-
-  const getPlaceholder = () => {
-    switch (selectedMotive) {
-      case 'New Video Announcement':
-        return 'E.g., Title of the new video, brief description...';
-      case 'Congrats for Festival':
-        return 'E.g., Festival name, message to fans...';
-      case 'Other':
-        return 'E.g., Any custom topic or message...';
-      default:
-        return 'Enter your topic or message...';
-    }
-  };
-
-  const generatePost = async () => {
-    if (!user) {
-      toast({
-        title: "Login Required",
-        description: "Please log in to generate posts.",
-        variant: "destructive",
-      });
-      navigate('/login');
+  
+  const generatePosts = async () => {
+    if (!prompt.trim()) {
+      toast.error('Please enter a topic');
       return;
     }
 
-    setIsLoading(true);
-    const userTier = tier || "free";
-    const allowed = await canGenerate(user.id, "youtubePosts", userTier);
-    if (!allowed) {
-      toast({
-        title: "Limit Reached",
-        description: "You've reached your YouTube community post generation limit. Upgrade your plan!",
-        variant: "destructive",
-      });
-      navigate('/pricing');
-      setIsLoading(false);
+    if (!user) {
+      toast.error('You must be logged in');
       return;
     }
 
     try {
-      if (!postTopic.trim()) {
-        throw new Error('Please enter a topic or message');
+      setLoading(true);
+      
+      // Check if user can generate
+      const canGenerateResult = await canGenerate(user.id, 'youtubePosts');
+      if (!canGenerateResult) {
+        toast.error('You have reached your limit for YouTube Community post generation');
+        return;
       }
-
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error('Gemini API key is missing. Check your .env file.');
-      }
-
-      const prompt = `Generate a YouTube Community post about "${postTopic}" in ${selectedLanguage} language, with a motive of "${selectedMotive}". Keep it engaging, max 1000 characters.`;
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 1000, temperature: 0.7 },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
-      }
-
-      const data = await response.json();
-      if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-        throw new Error('No post data returned from the API');
-      }
-
-      const post = data.candidates[0].content.parts[0].text.trim();
-      if (post.length > 1000) {
-        throw new Error('Generated post exceeds 1000 characters. Please try again.');
-      }
-
-      setGeneratedPost(post);
-      await updateUsage(user.id, "youtubePosts");
-      toast({
-        title: 'Post Generated',
-        description: `A community post has been successfully generated in ${selectedLanguage}`,
+      
+      // Make call to supabase function
+      const { data, error } = await supabase.functions.invoke('generate-youtube-posts', {
+        body: { topic: prompt }
       });
-    } catch (error: any) {
-      console.error('Error in post generation:', error);
-      toast({
-        title: 'Generation Failed',
-        description: error.message || 'Failed to generate post.',
-        variant: 'destructive',
-      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data && data.posts) {
+        setResults(data.posts);
+        await updateUsage(user.id, 'youtubePosts');
+      } else {
+        throw new Error('No posts were generated');
+      }
+    } catch (error) {
+      console.error('Error generating posts:', error);
+      toast.error('Failed to generate posts. Please try again.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
-
-  const copyToClipboard = () => {
-    if (generatedPost) {
-      navigator.clipboard.writeText(generatedPost);
-      toast({
-        title: 'Copied to clipboard',
-        description: 'Post copied to your clipboard',
-      });
-    }
+  
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success('Post copied to clipboard!');
+    setTimeout(() => setCopied(false), 2000);
   };
-
+  
   return (
     <RestrictedFeatureRedirect featureName="YouTube Community Post Generator">
-      <div className="space-y-6">
-        <div className="flex items-center mb-2">
-          <button onClick={() => handleNavigation('dashboard')} className="text-gray-400 hover:text-white mr-2">
-            <Home size={16} />
-          </button>
-          <span className="text-gray-500 mx-2">/</span>
-          <span className="text-gray-500 mr-2">Multi-Platform Post Generator</span>
-          <span className="text-gray-500 mx-2">/</span>
-          <span className="text-white">Community Post Generator</span>
-        </div>
-        <h2 className="text-2xl font-bold text-white">AI-Generated YouTube Community Posts</h2>
-        <p className="text-gray-300">Enter a topic and get engaging community post suggestions (max 1000 characters).</p>
-        <div className="glass-card p-6 rounded-xl space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="post-motive" className="text-white font-medium">
-              Motive of the Post:
-            </label>
-            <select
-              id="post-motive"
-              value={selectedMotive}
-              onChange={(e) => setSelectedMotive(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
-            >
-              {motives.map((motive) => (
-                <option key={motive} value={motive}>
-                  {motive}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="post-topic" className="text-white font-medium">
-              Post Topic or Message:
-            </label>
-            <input
-              id="post-topic"
-              type="text"
-              value={postTopic}
-              onChange={(e) => setPostTopic(e.target.value)}
-              placeholder={getPlaceholder()}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
-            />
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="language" className="text-white font-medium">
-              Language:
-            </label>
-            <select
-              id="language"
-              value={selectedLanguage}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
-            >
-              {languages.map((lang) => (
-                <option key={lang.code} value={lang.name}>
-                  {lang.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Button
-            onClick={generatePost}
-            disabled={!postTopic.trim() || isLoading}
-            isLoading={isLoading}
-            className="w-full"
-          >
-            Generate Post
-          </Button>
-        </div>
-        {generatedPost && (
-          <div className="glass-card p-6 rounded-xl">
-            <h3 className="text-white font-semibold mb-4">Generated Community Post:</h3>
-            <div className="flex items-start justify-between p-3 bg-gray-800 rounded-lg group hover:bg-gray-700 transition-colors">
-              <span className="text-white">{generatedPost}</span>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-white mb-6">YouTube Community Post Generator</h1>
+        <p className="text-gray-300 mb-8">Create engaging community posts for your YouTube channel.</p>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-white mb-4">Create a Community Post</h2>
+              
+              <div className="mb-4">
+                <label htmlFor="prompt" className="block text-gray-300 mb-2">What would you like to post about?</label>
+                <textarea
+                  id="prompt"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  rows={4}
+                  placeholder="E.g., My upcoming video on smartphone photography tips"
+                />
+              </div>
+              
               <button
-                onClick={copyToClipboard}
-                className="text-gray-400 hover:text-clipvobe-cyan opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={generatePosts}
+                disabled={loading || !prompt.trim()}
+                className={`w-full py-3 px-4 rounded-lg ${
+                  loading || !prompt.trim() ? 'bg-gray-600 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'
+                } text-white font-medium transition`}
               >
-                <Copy size={18} />
+                {loading ? 'Generating...' : 'Generate Community Posts'}
               </button>
             </div>
+            
+            {results.length > 0 && (
+              <div className="mt-8 bg-gray-800 rounded-lg p-6">
+                <h2 className="text-xl font-semibold text-white mb-4">Generated Posts</h2>
+                <div className="space-y-4">
+                  {results.map((post, index) => (
+                    <div 
+                      key={index}
+                      className={`p-4 rounded-lg cursor-pointer transition ${
+                        selectedPost === post ? 'bg-gray-700 border border-red-500' : 'bg-gray-700 hover:bg-gray-600'
+                      }`}
+                      onClick={() => setSelectedPost(post)}
+                    >
+                      <p className="text-gray-300 line-clamp-3">{post}</p>
+                      <div className="flex justify-end mt-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopy(post);
+                          }}
+                          className="text-sm text-red-400 hover:text-red-300"
+                        >
+                          {copied && selectedPost === post ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+          
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Preview</h2>
+            
+            {selectedPost ? (
+              <div className="bg-gray-700 rounded-lg p-6 max-h-[500px] overflow-y-auto">
+                <div className="flex items-center mb-4">
+                  <div className="w-12 h-12 rounded-full bg-gray-600 mr-4"></div>
+                  <div>
+                    <p className="text-white font-semibold">Your Channel</p>
+                    <p className="text-gray-400 text-sm">Just now</p>
+                  </div>
+                </div>
+                
+                <div className="whitespace-pre-line text-gray-300">
+                  {selectedPost}
+                </div>
+                
+                <div className="mt-6 border-t border-gray-600 pt-4">
+                  <div className="flex space-x-4">
+                    <button className="text-gray-400 hover:text-gray-300">👍 Like</button>
+                    <button className="text-gray-400 hover:text-gray-300">💬 Comment</button>
+                    <button className="text-gray-400 hover:text-gray-300">↗️ Share</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[300px] bg-gray-700 rounded-lg text-center p-6">
+                <p className="text-gray-400 mb-2">Select a generated post to preview</p>
+                <p className="text-gray-500 text-sm">Your YouTube Community post will appear here</p>
+              </div>
+            )}
+            
+            {selectedPost && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={() => handleCopy(selectedPost)}
+                  className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
+                >
+                  {copied ? 'Copied!' : 'Copy to Clipboard'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </RestrictedFeatureRedirect>
   );
