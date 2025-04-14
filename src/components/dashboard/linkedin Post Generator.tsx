@@ -1,10 +1,12 @@
 
 import React, { useState } from 'react';
+import { Copy, Home } from 'lucide-react';
+import { Button } from '../ui/button';
 import { toast } from 'sonner';
-import { supabase } from '../../integrations/supabase/client';
 import { useAuth } from '../../contexts/AuthContext';
 import { canGenerate, updateUsage } from './usageLimits';
 import RestrictedFeatureRedirect from './RestrictedFeatureRedirect';
+import { useNavigate } from 'react-router-dom';
 
 interface LinkedinPostGeneratorProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
@@ -14,170 +16,154 @@ const LinkedinPostGenerator: React.FC<LinkedinPostGeneratorProps> = ({ handleNav
   const [loading, setLoading] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [results, setResults] = useState<string[]>([]);
-  const [selectedPost, setSelectedPost] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const { user } = useAuth();
-  
-  const generatePosts = async () => {
-    if (!prompt.trim()) {
-      toast.error('Please enter a topic');
+  const navigate = useNavigate();
+
+  const generatePost = async () => {
+    if (!user) {
+      toast.error('Please login to use this feature');
+      navigate('/auth');
       return;
     }
 
-    if (!user) {
-      toast.error('You must be logged in');
+    if (!prompt.trim()) {
+      toast.error('Please enter a topic for your LinkedIn post');
       return;
     }
+
+    setLoading(true);
 
     try {
-      setLoading(true);
-      
-      // Check if user can generate
-      const canGenerateResult = await canGenerate(user.id, 'linkedinPosts');
-      if (!canGenerateResult) {
-        toast.error('You have reached your limit for LinkedIn posts generation');
+      // Check usage limits
+      const canUseFeature = await canGenerate(user.id, "linkedinPosts");
+      if (!canUseFeature) {
+        toast.error("You've reached your LinkedIn post generation limit. Upgrade your plan!");
+        navigate('/pricing');
+        setLoading(false);
         return;
       }
-      
-      // Make call to OpenAI API or your backend
-      const { data, error } = await supabase.functions.invoke('generate-linkedin-posts', {
-        body: { topic: prompt }
-      });
-      
-      if (error) {
-        throw error;
+
+      // Generate post using Google's Gemini API (directly or via edge function)
+      const apiKey = "AIzaSyC2WcxsrgdSqzfDoFH4wh1WvPo1pXTIYKc"; // Replace with environment variable in production
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `Generate 3 different LinkedIn post options about "${prompt}". Each post should be professional, engaging, include relevant hashtags, and follow LinkedIn best practices. Format them as numbered list like: 1. [post text]`,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1000,
+            },
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error?.message || "Failed to generate LinkedIn posts");
       }
+
+      // Process the response to extract the posts
+      const postsText = data.candidates[0].content.parts[0].text;
+      const postsList = postsText
+        .split(/\d+\.\s/)
+        .map((t: string) => t.trim())
+        .filter((t: string) => t.length > 0);
+
+      setResults(postsList);
       
-      if (data && data.posts) {
-        setResults(data.posts);
-        await updateUsage(user.id, 'linkedinPosts');
-      } else {
-        throw new Error('No posts were generated');
-      }
-    } catch (error) {
-      console.error('Error generating posts:', error);
-      toast.error('Failed to generate posts. Please try again.');
+      // Update usage count
+      await updateUsage(user.id, "linkedinPosts");
+      
+      toast.success("LinkedIn posts generated successfully!");
+    } catch (error: any) {
+      console.error("Error generating LinkedIn posts:", error);
+      toast.error(error.message || "Failed to generate posts. Please try again.");
     } finally {
       setLoading(false);
     }
   };
-  
-  const handleCopy = (text: string) => {
+
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast.success('Post copied to clipboard!');
-    setTimeout(() => setCopied(false), 2000);
+    toast.success('Post copied to clipboard');
   };
-  
+
   return (
     <RestrictedFeatureRedirect featureName="LinkedIn Post Generator">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-white mb-6">LinkedIn Post Generator</h1>
-        <p className="text-gray-300 mb-8">Generate professional LinkedIn posts about any topic.</p>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div>
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-white mb-4">Create a Professional Post</h2>
-              
-              <div className="mb-4">
-                <label htmlFor="prompt" className="block text-gray-300 mb-2">What would you like to post about?</label>
-                <textarea
-                  id="prompt"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  rows={4}
-                  placeholder="E.g., The future of AI in content creation"
-                />
-              </div>
-              
-              <button
-                onClick={generatePosts}
-                disabled={loading || !prompt.trim()}
-                className={`w-full py-3 px-4 rounded-lg ${
-                  loading || !prompt.trim() ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                } text-white font-medium transition`}
-              >
-                {loading ? 'Generating...' : 'Generate LinkedIn Posts'}
-              </button>
-            </div>
-            
-            {results.length > 0 && (
-              <div className="mt-8 bg-gray-800 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-white mb-4">Generated Posts</h2>
-                <div className="space-y-4">
-                  {results.map((post, index) => (
-                    <div 
-                      key={index}
-                      className={`p-4 rounded-lg cursor-pointer transition ${
-                        selectedPost === post ? 'bg-gray-700 border border-blue-500' : 'bg-gray-700 hover:bg-gray-600'
-                      }`}
-                      onClick={() => setSelectedPost(post)}
-                    >
-                      <p className="text-gray-300 line-clamp-3">{post}</p>
-                      <div className="flex justify-end mt-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCopy(post);
-                          }}
-                          className="text-sm text-blue-400 hover:text-blue-300"
-                        >
-                          {copied && selectedPost === post ? 'Copied!' : 'Copy'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Preview</h2>
-            
-            {selectedPost ? (
-              <div className="bg-gray-700 rounded-lg p-6 max-h-[500px] overflow-y-auto">
-                <div className="flex items-center mb-4">
-                  <div className="w-12 h-12 rounded-full bg-gray-600 mr-4"></div>
-                  <div>
-                    <p className="text-white font-semibold">Your Name</p>
-                    <p className="text-gray-400 text-sm">Your Title • Now</p>
-                  </div>
-                </div>
-                
-                <div className="whitespace-pre-line text-gray-300">
-                  {selectedPost}
-                </div>
-                
-                <div className="mt-6 border-t border-gray-600 pt-4">
-                  <div className="flex space-x-4">
-                    <button className="text-gray-400 hover:text-gray-300">Like</button>
-                    <button className="text-gray-400 hover:text-gray-300">Comment</button>
-                    <button className="text-gray-400 hover:text-gray-300">Share</button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[300px] bg-gray-700 rounded-lg text-center p-6">
-                <p className="text-gray-400 mb-2">Select a generated post to preview</p>
-                <p className="text-gray-500 text-sm">Your LinkedIn post will appear here</p>
-              </div>
-            )}
-            
-            {selectedPost && (
-              <div className="mt-4 flex justify-center">
-                <button
-                  onClick={() => handleCopy(selectedPost)}
-                  className="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-                >
-                  {copied ? 'Copied!' : 'Copy to Clipboard'}
-                </button>
-              </div>
-            )}
-          </div>
+      <div className="space-y-6">
+        <div className="flex items-center mb-2">
+          <button onClick={() => handleNavigation('dashboard')} className="text-gray-400 hover:text-white mr-2">
+            <Home size={16} />
+          </button>
+          <span className="text-gray-500 mx-2">/</span>
+          <span className="text-gray-500 mr-2">Platform Post Generator</span>
+          <span className="text-gray-500 mx-2">/</span>
+          <span className="text-white">LinkedIn Post Generator</span>
         </div>
+
+        <h2 className="text-2xl font-bold text-white">AI LinkedIn Post Generator</h2>
+        <p className="text-gray-300">
+          Enter a topic or theme, and we'll generate professional LinkedIn posts to boost your engagement.
+        </p>
+
+        <div className="glass-card p-6 rounded-xl space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="post-topic" className="text-white font-medium">
+              Post Topic:
+            </label>
+            <input
+              id="post-topic"
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="E.g., New job announcement, Industry insights, Personal achievement"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
+            />
+          </div>
+          <Button
+            onClick={generatePost}
+            disabled={!prompt.trim() || loading}
+            isLoading={loading}
+            className="w-full"
+          >
+            Generate LinkedIn Posts
+          </Button>
+        </div>
+
+        {results.length > 0 && (
+          <div className="glass-card p-6 rounded-xl">
+            <h3 className="text-white font-semibold mb-4">Generated LinkedIn Posts:</h3>
+            <div className="space-y-3">
+              {results.map((post, index) => (
+                <div
+                  key={index}
+                  className="flex items-start justify-between p-3 bg-gray-800 rounded-lg group hover:bg-gray-700 transition-colors"
+                >
+                  <span className="text-white">{post}</span>
+                  <button
+                    onClick={() => copyToClipboard(post)}
+                    className="text-gray-400 hover:text-clipvobe-cyan opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Copy size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </RestrictedFeatureRedirect>
   );

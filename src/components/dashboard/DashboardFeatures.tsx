@@ -16,9 +16,6 @@ interface DashboardFeaturesProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
 
-// First, let's fix the TypeScript errors in the TweetGenerator and LinkedInPostGenerator components
-// by updating their prop types in the DashboardFeatures component
-
 const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
   activeItem,
   activeSubItem,
@@ -52,7 +49,6 @@ const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
         return <VideoScriptGenerator handleNavigation={handleNavigation} />;
 
       case 'tweet-generator':
-        // @ts-ignore - ignoring the type error since we know this is correct
         return <TweetGenerator handleNavigation={handleNavigation} />;
 
       case 'youtube-community-post-generator':
@@ -62,7 +58,6 @@ const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
         return <RedditPostGenerator handleNavigation={handleNavigation} />;
 
       case 'linkedin-post-generator':
-        // @ts-ignore - ignoring the type error since we know this is correct
         return <LinkedInPostGenerator handleNavigation={handleNavigation} />;
 
       case 'settings':
