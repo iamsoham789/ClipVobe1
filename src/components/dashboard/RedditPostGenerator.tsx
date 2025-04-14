@@ -2,11 +2,12 @@
 import React, { useState } from 'react';
 import { Home, Copy } from 'lucide-react';
 import { Button } from '../ui/button';
-import { useToast } from '../../hooks/use-toast';
+import { toast } from 'sonner';
 import { canGenerate, updateUsage } from './usageLimits';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../hooks/use-subscription';
 import { useNavigate } from 'react-router-dom';
+import RestrictedFeatureRedirect from './RestrictedFeatureRedirect';
 
 const RedditPostGenerator: React.FC<{
   handleNavigation: (itemId: string, subItemId?: string) => void;
@@ -15,7 +16,6 @@ const RedditPostGenerator: React.FC<{
   const [generatedPost, setGeneratedPost] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
-  const { toast } = useToast();
   const { user } = useAuth();
   const { tier } = useSubscription(user?.id);
   const navigate = useNavigate();
@@ -31,11 +31,7 @@ const RedditPostGenerator: React.FC<{
 
   const generatePost = async () => {
     if (!user) {
-      toast({
-        title: "Login Required",
-        description: "Please log in to generate posts.",
-        variant: "destructive",
-      });
+      toast.error("Login Required");
       navigate('/login');
       return;
     }
@@ -44,11 +40,7 @@ const RedditPostGenerator: React.FC<{
     const userTier = tier || "free";
     const allowed = await canGenerate(user.id, "redditPosts", userTier);
     if (!allowed) {
-      toast({
-        title: "Limit Reached",
-        description: "You've reached your Reddit post generation limit. Upgrade your plan!",
-        variant: "destructive",
-      });
+      toast.error("You've reached your Reddit post generation limit. Upgrade your plan!");
       navigate('/pricing');
       setIsLoading(false);
       return;
@@ -94,17 +86,10 @@ const RedditPostGenerator: React.FC<{
 
       setGeneratedPost(post);
       await updateUsage(user.id, "redditPosts");
-      toast({
-        title: 'Post Generated',
-        description: `A Reddit post has been successfully generated in ${selectedLanguage}`,
-      });
+      toast.success(`A Reddit post has been successfully generated in ${selectedLanguage}`);
     } catch (error: any) {
       console.error('Error in post generation:', error);
-      toast({
-        title: 'Generation Failed',
-        description: error.message || 'Failed to generate post.',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Failed to generate post.');
     } finally {
       setIsLoading(false);
     }
@@ -113,81 +98,80 @@ const RedditPostGenerator: React.FC<{
   const copyToClipboard = () => {
     if (generatedPost) {
       navigator.clipboard.writeText(generatedPost);
-      toast({
-        title: 'Copied to clipboard',
-        description: 'Post copied to your clipboard',
-      });
+      toast.success('Post copied to your clipboard');
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center mb-2">
-        <button onClick={() => handleNavigation('dashboard')} className="text-gray-400 hover:text-white mr-2">
-          <Home size={16} />
-        </button>
-        <span className="text-gray-500 mx-2">/</span>
-        <span className="text-gray-500 mr-2">Multi-Platform Post Generator</span>
-        <span className="text-gray-500 mx-2">/</span>
-        <span className="text-white">Reddit Post Generator</span>
-      </div>
-      <h2 className="text-2xl font-bold text-white">AI-Generated Reddit Posts</h2>
-      <p className="text-gray-300">Enter a topic and get engaging Reddit post suggestions (max 10000 characters).</p>
-      <div className="glass-card p-6 rounded-xl space-y-4">
-        <div className="space-y-2">
-          <label htmlFor="post-topic" className="text-white font-medium">
-            Post Topic or Message:
-          </label>
-          <input
-            id="post-topic"
-            type="text"
-            value={postTopic}
-            onChange={(e) => setPostTopic(e.target.value)}
-            placeholder="E.g., Latest tech trends, Gaming tips, Community discussion..."
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
-          />
+    <RestrictedFeatureRedirect featureName="Reddit Post Generator">
+      <div className="space-y-6">
+        <div className="flex items-center mb-2">
+          <button onClick={() => handleNavigation('dashboard')} className="text-gray-400 hover:text-white mr-2">
+            <Home size={16} />
+          </button>
+          <span className="text-gray-500 mx-2">/</span>
+          <span className="text-gray-500 mr-2">Multi-Platform Post Generator</span>
+          <span className="text-gray-500 mx-2">/</span>
+          <span className="text-white">Reddit Post Generator</span>
         </div>
-        <div className="space-y-2">
-          <label htmlFor="language" className="text-white font-medium">
-            Language:
-          </label>
-          <select
-            id="language"
-            value={selectedLanguage}
-            onChange={(e) => setSelectedLanguage(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
-          >
-            {languages.map((lang) => (
-              <option key={lang.code} value={lang.name}>
-                {lang.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Button
-          onClick={generatePost}
-          disabled={!postTopic.trim() || isLoading}
-          isLoading={isLoading}
-          className="w-full"
-        >
-          Generate Post
-        </Button>
-      </div>
-      {generatedPost && (
-        <div className="glass-card p-6 rounded-xl">
-          <h3 className="text-white font-semibold mb-4">Generated Reddit Post:</h3>
-          <div className="flex items-start justify-between p-3 bg-gray-800 rounded-lg group hover:bg-gray-700 transition-colors">
-            <span className="text-white">{generatedPost}</span>
-            <button
-              onClick={copyToClipboard}
-              className="text-gray-400 hover:text-clipvobe-cyan opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Copy size={18} />
-            </button>
+        <h2 className="text-2xl font-bold text-white">AI-Generated Reddit Posts</h2>
+        <p className="text-gray-300">Enter a topic and get engaging Reddit post suggestions (max 10000 characters).</p>
+        <div className="glass-card p-6 rounded-xl space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="post-topic" className="text-white font-medium">
+              Post Topic or Message:
+            </label>
+            <input
+              id="post-topic"
+              type="text"
+              value={postTopic}
+              onChange={(e) => setPostTopic(e.target.value)}
+              placeholder="E.g., Latest tech trends, Gaming tips, Community discussion..."
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
+            />
           </div>
+          <div className="space-y-2">
+            <label htmlFor="language" className="text-white font-medium">
+              Language:
+            </label>
+            <select
+              id="language"
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
+            >
+              {languages.map((lang) => (
+                <option key={lang.code} value={lang.name}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button
+            onClick={generatePost}
+            disabled={!postTopic.trim() || isLoading}
+            isLoading={isLoading}
+            className="w-full"
+          >
+            Generate Post
+          </Button>
         </div>
-      )}
-    </div>
+        {generatedPost && (
+          <div className="glass-card p-6 rounded-xl">
+            <h3 className="text-white font-semibold mb-4">Generated Reddit Post:</h3>
+            <div className="flex items-start justify-between p-3 bg-gray-800 rounded-lg group hover:bg-gray-700 transition-colors">
+              <span className="text-white">{generatedPost}</span>
+              <button
+                onClick={copyToClipboard}
+                className="text-gray-400 hover:text-clipvobe-cyan opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Copy size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </RestrictedFeatureRedirect>
   );
 };
 

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Home, Copy } from 'lucide-react';
 import { Button } from '../ui/button';
-import { useToast } from '../../hooks/use-toast';
+import { toast } from 'sonner';
+import { supabase } from '../../integrations/supabase/client';
 import { canGenerate, updateUsage } from './usageLimits';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../hooks/use-subscription';
 import { useNavigate } from 'react-router-dom';
+import RestrictedFeatureRedirect from './RestrictedFeatureRedirect';
 
-const VideoCommunityPostGenerator: React.FC<{
+const YouTubeCommunityPostGenerator: React.FC<{
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }> = ({ handleNavigation }) => {
   const [postTopic, setPostTopic] = useState('');
@@ -140,91 +142,93 @@ const VideoCommunityPostGenerator: React.FC<{
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center mb-2">
-        <button onClick={() => handleNavigation('dashboard')} className="text-gray-400 hover:text-white mr-2">
-          <Home size={16} />
-        </button>
-        <span className="text-gray-500 mx-2">/</span>
-        <span className="text-gray-500 mr-2">Multi-Platform Post Generator</span>
-        <span className="text-gray-500 mx-2">/</span>
-        <span className="text-white">Community Post Generator</span>
-      </div>
-      <h2 className="text-2xl font-bold text-white">AI-Generated YouTube Community Posts</h2>
-      <p className="text-gray-300">Enter a topic and get engaging community post suggestions (max 1000 characters).</p>
-      <div className="glass-card p-6 rounded-xl space-y-4">
-        <div className="space-y-2">
-          <label htmlFor="post-motive" className="text-white font-medium">
-            Motive of the Post:
-          </label>
-          <select
-            id="post-motive"
-            value={selectedMotive}
-            onChange={(e) => setSelectedMotive(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
-          >
-            {motives.map((motive) => (
-              <option key={motive} value={motive}>
-                {motive}
-              </option>
-            ))}
-          </select>
+    <RestrictedFeatureRedirect featureName="YouTube Community Post Generator">
+      <div className="space-y-6">
+        <div className="flex items-center mb-2">
+          <button onClick={() => handleNavigation('dashboard')} className="text-gray-400 hover:text-white mr-2">
+            <Home size={16} />
+          </button>
+          <span className="text-gray-500 mx-2">/</span>
+          <span className="text-gray-500 mr-2">Multi-Platform Post Generator</span>
+          <span className="text-gray-500 mx-2">/</span>
+          <span className="text-white">Community Post Generator</span>
         </div>
-        <div className="space-y-2">
-          <label htmlFor="post-topic" className="text-white font-medium">
-            Post Topic or Message:
-          </label>
-          <input
-            id="post-topic"
-            type="text"
-            value={postTopic}
-            onChange={(e) => setPostTopic(e.target.value)}
-            placeholder={getPlaceholder()}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
-          />
-        </div>
-        <div className="space-y-2">
-          <label htmlFor="language" className="text-white font-medium">
-            Language:
-          </label>
-          <select
-            id="language"
-            value={selectedLanguage}
-            onChange={(e) => setSelectedLanguage(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
-          >
-            {languages.map((lang) => (
-              <option key={lang.code} value={lang.name}>
-                {lang.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Button
-          onClick={generatePost}
-          disabled={!postTopic.trim() || isLoading}
-          isLoading={isLoading}
-          className="w-full"
-        >
-          Generate Post
-        </Button>
-      </div>
-      {generatedPost && (
-        <div className="glass-card p-6 rounded-xl">
-          <h3 className="text-white font-semibold mb-4">Generated Community Post:</h3>
-          <div className="flex items-start justify-between p-3 bg-gray-800 rounded-lg group hover:bg-gray-700 transition-colors">
-            <span className="text-white">{generatedPost}</span>
-            <button
-              onClick={copyToClipboard}
-              className="text-gray-400 hover:text-clipvobe-cyan opacity-0 group-hover:opacity-100 transition-opacity"
+        <h2 className="text-2xl font-bold text-white">AI-Generated YouTube Community Posts</h2>
+        <p className="text-gray-300">Enter a topic and get engaging community post suggestions (max 1000 characters).</p>
+        <div className="glass-card p-6 rounded-xl space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="post-motive" className="text-white font-medium">
+              Motive of the Post:
+            </label>
+            <select
+              id="post-motive"
+              value={selectedMotive}
+              onChange={(e) => setSelectedMotive(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
             >
-              <Copy size={18} />
-            </button>
+              {motives.map((motive) => (
+                <option key={motive} value={motive}>
+                  {motive}
+                </option>
+              ))}
+            </select>
           </div>
+          <div className="space-y-2">
+            <label htmlFor="post-topic" className="text-white font-medium">
+              Post Topic or Message:
+            </label>
+            <input
+              id="post-topic"
+              type="text"
+              value={postTopic}
+              onChange={(e) => setPostTopic(e.target.value)}
+              placeholder={getPlaceholder()}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
+            />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="language" className="text-white font-medium">
+              Language:
+            </label>
+            <select
+              id="language"
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
+            >
+              {languages.map((lang) => (
+                <option key={lang.code} value={lang.name}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button
+            onClick={generatePost}
+            disabled={!postTopic.trim() || isLoading}
+            isLoading={isLoading}
+            className="w-full"
+          >
+            Generate Post
+          </Button>
         </div>
-      )}
-    </div>
+        {generatedPost && (
+          <div className="glass-card p-6 rounded-xl">
+            <h3 className="text-white font-semibold mb-4">Generated Community Post:</h3>
+            <div className="flex items-start justify-between p-3 bg-gray-800 rounded-lg group hover:bg-gray-700 transition-colors">
+              <span className="text-white">{generatedPost}</span>
+              <button
+                onClick={copyToClipboard}
+                className="text-gray-400 hover:text-clipvobe-cyan opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Copy size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </RestrictedFeatureRedirect>
   );
 };
 
-export default VideoCommunityPostGenerator;
+export default YouTubeCommunityPostGenerator;

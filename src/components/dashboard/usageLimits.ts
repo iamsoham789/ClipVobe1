@@ -12,51 +12,40 @@ export type FeatureType =
   | "redditPosts"
   | "linkedinPosts";
 
-// Add 'export' here
+// Update subscription limits to match new pricing tiers
 export const subscriptionLimits: Record<string, Record<FeatureType, number>> = {
   free: {
-    titles: 1,
-    descriptions: 1,
-    hashtags: 1,
-    ideas: 1,
+    titles: 2,
+    descriptions: 2,
+    hashtags: 2,
+    ideas: 2,
     scripts: 0,
-    tweets: 1,
-    youtubePosts: 1,
-    redditPosts: 1,
-    linkedinPosts: 1,
+    tweets: 0,
+    youtubePosts: 0,
+    redditPosts: 0,
+    linkedinPosts: 0,
   },
   basic: {
-    titles: 8,
-    descriptions: 10,
-    hashtags: 10,
-    ideas: 2,
-    scripts: 2,
-    tweets: 5,
-    youtubePosts: 5,
-    redditPosts: 5,
-    linkedinPosts: 5,
+    titles: 30,
+    descriptions: 25,
+    hashtags: 25,
+    ideas: 6,
+    scripts: 5,
+    tweets: 20,
+    youtubePosts: 20,
+    redditPosts: 20,
+    linkedinPosts: 20,
   },
   pro: {
-    titles: 20,
-    descriptions: 30,
-    hashtags: 25,
-    ideas: 5,
-    scripts: 5,
-    tweets: 12,
-    youtubePosts: 12,
-    redditPosts: 12,
-    linkedinPosts: 12,
-  },
-  creator: {
-    titles: 50,
-    descriptions: 80,
-    hashtags: 60,
-    ideas: 12,
-    scripts: 15,
-    tweets: 30,
-    youtubePosts: 30,
-    redditPosts: 30,
-    linkedinPosts: 30,
+    titles: 2000, // Internal cap for "unlimited"
+    descriptions: 1000, // Internal cap for "unlimited"
+    hashtags: 1000, // Internal cap for "unlimited"
+    ideas: 400, // Internal cap for "unlimited"
+    scripts: 100, // Internal cap for "unlimited"
+    tweets: 1000, // Internal cap for "unlimited"
+    youtubePosts: 1000, // Internal cap for "unlimited"
+    redditPosts: 1000, // Internal cap for "unlimited"
+    linkedinPosts: 1000, // Internal cap for "unlimited"
   },
 };
 
@@ -97,19 +86,14 @@ export const canGenerate = async (
   feature: FeatureType,
   tier: string = "free",
 ): Promise<boolean> => {
-  // For free tier, strictly enforce limits
-  if (tier === "free") {
-    const remainingUses = await getRemainingUses(userId, feature, tier);
-    return remainingUses > 0;
+  // Check if the feature is available in this tier
+  if (subscriptionLimits[tier]?.[feature] === 0) {
+    return false;
   }
 
-  // For paid tiers, check if they have a valid subscription
-  if (tier && tier !== "free") {
-    // Check if the feature is available in this tier
-    return subscriptionLimits[tier]?.[feature] > 0;
-  }
-
-  return false;
+  // For all tiers, check remaining uses
+  const remainingUses = await getRemainingUses(userId, feature, tier);
+  return remainingUses > 0;
 };
 
 export const updateUsage = async (
@@ -117,9 +101,7 @@ export const updateUsage = async (
   feature: FeatureType,
   tier: string = "free",
 ): Promise<void> => {
-  // Only track usage for free tier
-  if (tier !== "free") return;
-  
+  // Only track usage for all tiers now
   try {
     const { data, error: fetchError } = await supabase
       .from("usage")

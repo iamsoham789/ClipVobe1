@@ -46,6 +46,20 @@ export function useSubscription(userId?: string) {
         console.log('Subscription data:', subscriptionData); // Debug output
 
         if (!subscriptionData) {
+          // If no subscription exists, create a free tier subscription for the user
+          const { error: insertError } = await supabase
+            .from('subscriptions')
+            .insert({
+              user_id: userId,
+              tier: 'free',
+              status: 'active',
+              expires_at: null
+            });
+            
+          if (insertError) {
+            console.error('Error creating free subscription:', insertError);
+          }
+          
           setSubscription({
             tier: 'free',
             isActive: true,

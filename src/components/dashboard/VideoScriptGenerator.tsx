@@ -1,110 +1,40 @@
 import React, { useState } from 'react';
+import { Home, Copy } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { canGenerate, updateUsage } from './usageLimits';
 import { useToast } from '../../hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../integrations/supabase/client';
+import { canGenerate, updateUsage } from './usageLimits';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../hooks/use-subscription';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
-import { Checkbox } from '../ui/checkbox';
-import { Textarea } from '../ui/textarea';
-import { ScrollText, Copy, Download, Save, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import RestrictedFeatureRedirect from './RestrictedFeatureRedirect';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-
-interface VideoScriptGeneratorProps {
+const VideoScriptGenerator: React.FC<{
   handleNavigation: (itemId: string, subItemId?: string) => void;
-}
-
-const VideoScriptGenerator: React.FC<VideoScriptGeneratorProps> = ({
-  handleNavigation,
-}) => {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { tier } = useSubscription();
-  const [isLoading, setIsLoading] = useState(false);
+}> = ({ handleNavigation }) => {
+  const [scriptTopic, setScriptTopic] = useState('');
   const [generatedScript, setGeneratedScript] = useState<string>('');
-  const [formData, setFormData] = useState({
-    contentType: '',
-    duration: '',
-    topic: '',
-    targetAudience: '',
-    tone: '',
-    language: 'English',
-    includeCTA: false,
-  });
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const { tier } = useSubscription(user?.id);
+  const navigate = useNavigate();
 
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-    setError(null);
-  };
+  const languages = [
+    { code: 'en', name: 'English' },
+    { code: 'hi', name: 'Hindi' },
+    { code: 'ru', name: 'Russian' },
+    { code: 'pt', name: 'Portuguese' },
+    { code: 'es', name: 'Spanish' },
+    { code: 'fr', name: 'French' },
+  ];
 
-  const validateForm = () => {
-    if (!formData.contentType) return 'Please select a content type';
-    if (!formData.duration) return 'Please select a duration';
-    if (!formData.topic) return 'Please enter a topic';
-    if (!formData.targetAudience) return 'Please select a target audience';
-    if (!formData.tone) return 'Please select a tone';
-    return null;
-  };
-
-  const generatePrompt = () => {
-    const { contentType, duration, topic, targetAudience, tone, language, includeCTA } = formData;
-    return `Create a ${contentType} video script about "${topic}" for ${duration} ${
-      contentType === 'shorts' ? 'seconds' : 'minutes'
-    }.
-
-Target Audience: ${targetAudience}
-Tone: ${tone}
-Language: ${language}
-
-Please structure the script with:
-1. An engaging hook that immediately grabs attention
-2. Clear and concise main points
-3. Smooth transitions between sections
-${includeCTA ? '4. A compelling call-to-action at the end' : ''}
-
-The script should be optimized for ${
-      contentType === 'shorts' 
-        ? 'vertical video format and quick engagement. Keep sentences short and impactful.' 
-        : 'detailed explanation and viewer retention. Include proper pacing and engagement points.'
-    }
-
-Format the output with:
-- Clear section headers
-- Timestamps for each section
-- [Hook] section at the start
-- [Main Content] in the middle
-- ${includeCTA ? '[Call to Action] at the end' : '[Conclusion] to wrap up'}
-- Estimated delivery time for each section
-
-Remember to:
-- Keep the language ${tone} and suitable for ${targetAudience}
-- Use short, punchy sentences for better delivery
-- Include natural transition phrases
-- ${language !== 'English' ? `Write the entire script in ${language}` : ''}`;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const generateScript = async () => {
     if (!user) {
       toast({
         title: "Login Required",
-        description: "Please log in to generate scripts.",
+        description: "Please log in to generate video scripts.",
         variant: "destructive",
       });
       navigate('/login');
@@ -117,7 +47,7 @@ Remember to:
     if (!allowed) {
       toast({
         title: "Limit Reached",
-        description: "You've reached your script generation limit. Upgrade your plan!",
+        description: "You've reached your video script generation limit. Upgrade your plan!",
         variant: "destructive",
       });
       navigate('/pricing');
@@ -125,320 +55,143 @@ Remember to:
       return;
     }
 
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      toast({
-        title: "Validation Error",
-        description: validationError,
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    if (!GEMINI_API_KEY) {
-      setError('Gemini API key is not configured');
-      toast({
-        title: "Configuration Error",
-        description: "Gemini API key is not set",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
     try {
+      if (!scriptTopic.trim()) {
+        throw new Error('Please enter a topic for the video script');
+      }
+
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('Gemini API key is missing. Check your .env file.');
+      }
+
+      const prompt = `Generate a detailed video script about "${scriptTopic}" in ${selectedLanguage} language, including an engaging introduction, well-structured main content, and a compelling conclusion. The script should be suitable for a YouTube video, max 10000 characters.`;
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: generatePrompt()
-              }]
-            }],
-            generationConfig: {
-              temperature: 0.7,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 1024,
-            },
-            safetySettings: [
-              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }
-            ]
-          })
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 10000, temperature: 0.7 },
+          }),
         }
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Failed to generate script');
+        const errorText = await response.text();
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
-      const generatedText = data.candidates[0].content.parts[0].text;
+      if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
+        throw new Error('No script data returned from the API');
+      }
 
-      const formattedScript = `Video Script: ${formData.topic}
-Type: ${formData.contentType}
-Duration: ${formData.duration} ${formData.contentType === 'shorts' ? 'seconds' : 'minutes'}
-Target Audience: ${formData.targetAudience}
-Tone: ${formData.tone}
-Language: ${formData.language}
+      const script = data.candidates[0].content.parts[0].text.trim();
+      if (script.length > 10000) {
+        throw new Error('Generated script exceeds 10000 characters. Please try again.');
+      }
 
-${generatedText}`;
-
-      setGeneratedScript(formattedScript);
+      setGeneratedScript(script);
       await updateUsage(user.id, "scripts");
       toast({
-        title: "Script Generated Successfully!",
-        description: "Would you like to generate SEO-optimized tags for better reach?",
-        action: (
-          <Button
-            variant="default"
-            onClick={() => handleNavigation('hashtags')}
-            className="bg-clipvobe-cyan text-black hover:bg-clipvobe-cyan/90"
-          >
-            Generate Tags
-          </Button>
-        ),
+        title: 'Script Generated',
+        description: `A video script has been successfully generated in ${selectedLanguage}`,
       });
-    } catch (error) {
-      console.error('Error generating script:', error);
-      setError(error instanceof Error ? error.message : 'Failed to generate script');
+    } catch (error: any) {
+      console.error('Error in script generation:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : 'Failed to generate script',
-        variant: "destructive",
+        title: 'Generation Failed',
+        description: error.message || 'Failed to generate script.',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(generatedScript);
+  const copyToClipboard = () => {
+    if (generatedScript) {
+      navigator.clipboard.writeText(generatedScript);
       toast({
-        title: "Copied!",
-        description: "Script copied to clipboard",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to copy script",
-        variant: "destructive",
+        title: 'Copied to clipboard',
+        description: 'Script copied to your clipboard',
       });
     }
   };
 
-  const downloadScript = () => {
-    try {
-      const blob = new Blob([generatedScript], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `video-script-${Date.now()}.txt`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to download script",
-        variant: "destructive",
-      });
-    }
-  };
-
-  try {
-    return (
+  return (
+    <RestrictedFeatureRedirect featureName="Script Generator">
       <div className="space-y-6">
-        <div className="flex items-center gap-2">
-          <ScrollText className="h-6 w-6 text-clipvobe-cyan" />
-          <h2 className="text-2xl font-bold text-white">Generate AI Video Script</h2>
+        <div className="flex items-center mb-2">
+          <button onClick={() => handleNavigation('dashboard')} className="text-gray-400 hover:text-white mr-2">
+            <Home size={16} />
+          </button>
+          <span className="text-gray-500 mx-2">/</span>
+          <span className="text-gray-500 mr-2">Generate Content</span>
+          <span className="text-gray-500 mx-2">/</span>
+          <span className="text-white">Video Script Generator</span>
         </div>
-        {error && (
-          <div className="glass-card rounded-xl p-4 bg-red-500/10 border border-red-500/20">
-            <p className="text-red-400">{error}</p>
-          </div>
-        )}
-        <div className="glass-card rounded-xl p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="contentType">Content Type</Label>
-                <Select onValueChange={(value) => handleInputChange('contentType', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select content type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="shorts">Shorts (≤ 60 seconds)</SelectItem>
-                    <SelectItem value="longform">Long-form Content (1-10 minutes)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="duration">Duration</Label>
-                <Select onValueChange={(value) => handleInputChange('duration', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formData.contentType === 'shorts' ? (
-                      <>
-                        <SelectItem value="15">15 seconds</SelectItem>
-                        <SelectItem value="30">30 seconds</SelectItem>
-                        <SelectItem value="60">60 seconds</SelectItem>
-                      </>
-                    ) : (
-                      <>
-                        <SelectItem value="1">1 minute</SelectItem>
-                        <SelectItem value="2">2 minutes</SelectItem>
-                        <SelectItem value="3">3 minutes</SelectItem>
-                        <SelectItem value="5">5 minutes</SelectItem>
-                        <SelectItem value="10">10 minutes</SelectItem>
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="topic">Topic</Label>
-                <Input
-                  id="topic"
-                  placeholder="Enter your video topic or idea"
-                  value={formData.topic}
-                  onChange={(e) => handleInputChange('topic', e.target.value)}
-                  className="bg-clipvobe-gray-800 border-clipvobe-gray-700"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="targetAudience">Target Audience</Label>
-                <Select onValueChange={(value) => handleInputChange('targetAudience', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select target audience" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="general">General</SelectItem>
-                    <SelectItem value="kids">Kids</SelectItem>
-                    <SelectItem value="professionals">Professionals</SelectItem>
-                    <SelectItem value="gamers">Gamers</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tone">Tone</Label>
-                <Select onValueChange={(value) => handleInputChange('tone', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select tone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="energetic">Energetic</SelectItem>
-                    <SelectItem value="professional">Professional</SelectItem>
-                    <SelectItem value="casual">Casual</SelectItem>
-                    <SelectItem value="humorous">Humorous</SelectItem>
-                    <SelectItem value="informative">Informative</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
-                <Select
-                  defaultValue={formData.language}
-                  onValueChange={(value) => handleInputChange('language', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="English">English</SelectItem>
-                    <SelectItem value="Spanish">Spanish</SelectItem>
-                    <SelectItem value="French">French</SelectItem>
-                    <SelectItem value="Portuguese">Portuguese</SelectItem>
-                    <SelectItem value="Hindi">Hindi</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="includeCTA"
-                  checked={formData.includeCTA}
-                  onCheckedChange={(checked) => handleInputChange('includeCTA', !!checked)}
-                />
-                <Label htmlFor="includeCTA">Include Call-to-Action</Label>
-              </div>
-            </div>
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-clipvobe-cyan text-black hover:bg-clipvobe-cyan/90"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                "Generate Script"
-              )}
-            </Button>
-          </form>
-        </div>
-        {generatedScript && (
-          <div className="glass-card rounded-xl p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Generated Script</h3>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={copyToClipboard}
-                  className="text-clipvobe-cyan hover:text-clipvobe-cyan/90"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={downloadScript}
-                  className="text-clipvobe-cyan hover:text-clipvobe-cyan/90"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleNavigation('hashtags')}
-                  className="text-clipvobe-cyan hover:text-clipvobe-cyan/90"
-                >
-                  <Save className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <Textarea
-              value={generatedScript}
-              readOnly
-              className="min-h-[300px] bg-clipvobe-gray-800 border-clipvobe-gray-700 font-mono"
+        <h2 className="text-2xl font-bold text-white">AI-Generated Video Scripts</h2>
+        <p className="text-gray-300">Enter a topic and get engaging video script suggestions (max 10000 characters).</p>
+        <div className="glass-card p-6 rounded-xl space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="script-topic" className="text-white font-medium">
+              Video Topic:
+            </label>
+            <input
+              id="script-topic"
+              type="text"
+              value={scriptTopic}
+              onChange={(e) => setScriptTopic(e.target.value)}
+              placeholder="E.g., How to start a YouTube channel, Best practices for content creation..."
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
             />
           </div>
+          <div className="space-y-2">
+            <label htmlFor="language" className="text-white font-medium">
+              Language:
+            </label>
+            <select
+              id="language"
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-clipvobe-cyan"
+            >
+              {languages.map((lang) => (
+                <option key={lang.code} value={lang.name}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button
+            onClick={generateScript}
+            disabled={!scriptTopic.trim() || isLoading}
+            isLoading={isLoading}
+            className="w-full"
+          >
+            Generate Script
+          </Button>
+        </div>
+        {generatedScript && (
+          <div className="glass-card p-6 rounded-xl">
+            <h3 className="text-white font-semibold mb-4">Generated Video Script:</h3>
+            <div className="flex items-start justify-between p-3 bg-gray-800 rounded-lg group hover:bg-gray-700 transition-colors">
+              <span className="text-white">{generatedScript}</span>
+              <button
+                onClick={copyToClipboard}
+                className="text-gray-400 hover:text-clipvobe-cyan opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Copy size={18} />
+              </button>
+            </div>
+          </div>
         )}
       </div>
-    );
-  } catch (error) {
-    console.error('Error in VideoScriptGenerator:', error);
-    return (
-      <div className="text-red-500 p-4">
-        An error occurred in the Video Script Generator. Please check the console for details.
-      </div>
-    );
-  }
+    </RestrictedFeatureRedirect>
+  );
 };
 
 export default VideoScriptGenerator;
