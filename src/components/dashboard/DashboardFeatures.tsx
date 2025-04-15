@@ -49,7 +49,7 @@ const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
         return <VideoScriptGenerator handleNavigation={handleNavigation} />;
 
       case 'tweet-generator':
-        return <TweetGenerator handleNavigation={handleNavigation} />;
+        return <TweetGenerator handleNavigation={handleNavigation as any} />;
 
       case 'youtube-community-post-generator':
         return <YouTubeCommunityPostGenerator handleNavigation={handleNavigation} />;
