@@ -1,7 +1,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
+import Stripe from 'jsr:stripe@14.21.0';
+import { createClient } from 'jsr:@supabase/supabase-js@2.45.0';
 
 // Validate required environment variables
 const requiredEnvVars = {

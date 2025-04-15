@@ -141,14 +141,15 @@ export const updateUsage = async (
     }
 
     const newCount = currentCount + 1;
-    const resetAt = new Date();
-    resetAt.setMonth(resetAt.getMonth() + 1);
+    const resetDate = new Date();
+    resetDate.setMonth(resetDate.getMonth() + 1);
+    const resetAtStr = resetDate.toISOString();
 
     // Update or insert usage record
     const { error: upsertError } = await supabase
       .from("usage")
       .upsert(
-        { user_id: userId, feature, count: newCount, reset_at: resetAt },
+        { user_id: userId, feature, count: newCount, reset_at: resetAtStr },
         { onConflict: "user_id,feature" }
       );
 
