@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Copy, Home } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -8,11 +7,11 @@ import { canGenerate, updateUsage } from './usageLimits';
 import RestrictedFeatureRedirect from './RestrictedFeatureRedirect';
 import { useNavigate } from 'react-router-dom';
 
-interface LinkedinPostGeneratorProps {
+interface LinkedInPostGeneratorProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
 
-const LinkedinPostGenerator: React.FC<LinkedinPostGeneratorProps> = ({ handleNavigation }) => {
+const LinkedInPostGenerator: React.FC<LinkedInPostGeneratorProps> = ({ handleNavigation }) => {
   const [loading, setLoading] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [results, setResults] = useState<string[]>([]);
@@ -34,7 +33,6 @@ const LinkedinPostGenerator: React.FC<LinkedinPostGeneratorProps> = ({ handleNav
     setLoading(true);
 
     try {
-      // Check usage limits
       const canUseFeature = await canGenerate(user.id, "linkedinPosts");
       if (!canUseFeature) {
         toast.error("You've reached your LinkedIn post generation limit. Upgrade your plan!");
@@ -43,8 +41,7 @@ const LinkedinPostGenerator: React.FC<LinkedinPostGeneratorProps> = ({ handleNav
         return;
       }
 
-      // Generate post using Google's Gemini API (directly or via edge function)
-      const apiKey = "AIzaSyC2WcxsrgdSqzfDoFH4wh1WvPo1pXTIYKc"; // Replace with environment variable in production
+      const apiKey = "AIzaSyC2WcxsrgdSqzfDoFH4wh1WvPo1pXTIYKc";
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
         {
@@ -75,7 +72,6 @@ const LinkedinPostGenerator: React.FC<LinkedinPostGeneratorProps> = ({ handleNav
         throw new Error(data.error?.message || "Failed to generate LinkedIn posts");
       }
 
-      // Process the response to extract the posts
       const postsText = data.candidates[0].content.parts[0].text;
       const postsList = postsText
         .split(/\d+\.\s/)
@@ -84,7 +80,6 @@ const LinkedinPostGenerator: React.FC<LinkedinPostGeneratorProps> = ({ handleNav
 
       setResults(postsList);
       
-      // Update usage count
       await updateUsage(user.id, "linkedinPosts");
       
       toast.success("LinkedIn posts generated successfully!");
@@ -169,4 +164,4 @@ const LinkedinPostGenerator: React.FC<LinkedinPostGeneratorProps> = ({ handleNav
   );
 };
 
-export default LinkedinPostGenerator;
+export default LinkedInPostGenerator;

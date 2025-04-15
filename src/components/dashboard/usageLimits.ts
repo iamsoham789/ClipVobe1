@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export type FeatureType =
@@ -113,14 +112,14 @@ export const canGenerate = async (
 export const updateUsage = async (
   userId: string,
   feature: FeatureType,
-  tier: string = "free",
-): Promise<void> => {
-  // Only track usage if the feature has a limit in this tier
-  if (subscriptionLimits[tier]?.[feature] === 0) {
-    return;
-  }
-
+  tier?: SubscriptionTier,
+): Promise<boolean> => {
   try {
+    // Check if the feature is available in this tier
+    if (subscriptionLimits[tier]?.[feature] === 0) {
+      return false;
+    }
+
     // Get current usage
     const { data, error: fetchError } = await supabase
       .from("usage")
@@ -155,8 +154,12 @@ export const updateUsage = async (
 
     if (upsertError) {
       console.error("Error updating usage:", upsertError);
+      return false;
     }
+
+    return true;
   } catch (error) {
     console.error("Error in updateUsage:", error);
+    return false;
   }
 };
