@@ -16,6 +16,11 @@ interface DashboardFeaturesProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
 
+// Define prop types for each component to fix TypeScript errors
+interface FeatureComponentProps {
+  handleNavigation: (itemId: string, subItemId?: string) => void;
+}
+
 const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
   activeItem,
   activeSubItem,

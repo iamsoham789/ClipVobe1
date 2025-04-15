@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export type FeatureType =
@@ -112,11 +113,11 @@ export const canGenerate = async (
 export const updateUsage = async (
   userId: string,
   feature: FeatureType,
-  tier?: SubscriptionTier,
+  tier?: string,
 ): Promise<boolean> => {
   try {
     // Check if the feature is available in this tier
-    if (subscriptionLimits[tier]?.[feature] === 0) {
+    if (tier && subscriptionLimits[tier]?.[feature] === 0) {
       return false;
     }
 
