@@ -122,8 +122,8 @@ const Pricing = () => {
         throw new Error("Stripe failed to initialize");
       }
 
-      // Create a checkout session
-      const response = await fetch(`${import.meta.env.VITE_APP_URL || window.location.origin}/api/create-checkout-session`, {
+      // Update to use the correct URL for the deployed Edge Function
+      const response = await fetch("https://ijplrwyidnrqjlgyhdhs.supabase.co/functions/v1/dynamic-service", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +139,8 @@ const Pricing = () => {
       const session = await response.json();
       
       if (!session || !session.id) {
-        throw new Error("Failed to create checkout session");
+        console.error("Checkout session response:", session);
+        throw new Error(session.error || "Failed to create checkout session");
       }
 
       // Redirect to Stripe Checkout

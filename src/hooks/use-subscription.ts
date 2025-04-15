@@ -15,6 +15,7 @@ interface SubscriptionRow {
   tier: string;
   status: string;
   current_period_end: string | null;
+  expires_at: string | null; // Added for backward compatibility
 }
 
 export function useSubscription(userId?: string) {
@@ -34,18 +35,24 @@ export function useSubscription(userId?: string) {
 
     async function fetchSubscription() {
       try {
+        console.log('Fetching subscription for user:', userId);
+        
         // Explicitly type the query result
         const { data: subscriptionData, error: subError } = await supabase
           .from('subscriptions')
-          .select('tier, status, current_period_end')
+          .select('tier, status, current_period_end, expires_at')
           .eq('user_id', userId)
           .maybeSingle() as { data: SubscriptionRow | null; error: any };
 
-        if (subError) throw subError;
+        if (subError) {
+          console.error('Supabase error fetching subscription:', subError);
+          throw subError;
+        }
 
         console.log('Subscription data:', subscriptionData); // Debug output
 
         if (!subscriptionData) {
+          console.log('No subscription found, creating free tier subscription');
           // If no subscription exists, create a free tier subscription for the user
           const { error: insertError } = await supabase
             .from('subscriptions')
@@ -53,7 +60,7 @@ export function useSubscription(userId?: string) {
               user_id: userId,
               tier: 'free',
               status: 'active',
-              current_period_end: null
+              expires_at: null
             });
             
           if (insertError) {
@@ -65,14 +72,17 @@ export function useSubscription(userId?: string) {
             isActive: true,
             expiresAt: null,
           });
+          setLoading(false);
           return;
         }
 
-        // Use the typed data directly
+        // Use the typed data directly, with fallbacks for different column names
+        const expiresAt = subscriptionData.current_period_end || subscriptionData.expires_at;
+        
         setSubscription({
           tier: subscriptionData.tier as SubscriptionTier, // Cast to SubscriptionTier
           isActive: subscriptionData.status === 'active',
-          expiresAt: subscriptionData.current_period_end,
+          expiresAt: expiresAt,
         });
       } catch (err) {
         console.error('Error fetching subscription:', err);
