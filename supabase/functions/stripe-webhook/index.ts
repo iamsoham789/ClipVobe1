@@ -1,29 +1,43 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import Stripe from "jsr:@stripe/stripe@14.21.0";
-import { createClient } from "jsr:@supabase/supabase-js@2.45.4";
+import { Stripe } from "https://esm.sh/stripe@14.21.0?target=deno";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4?target=deno";
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', { apiVersion: '2025-02-24.acacia' });
+// Required env vars:
+// STRIPE_SECRET_KEY: sk_test_51...
+// STRIPE_WEBHOOK_SECRET: whsec_...
+// SUPABASE_URL: https://ijplrwyidnrqjlgyhdhs.supabase.co
+// SUPABASE_SERVICE_ROLE_KEY: eyJhbGci...
+// STRIPE_BASIC_PRICE_ID: price_...
+// STRIPE_UNLIMITED_PRICE_ID: price_...
+
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+  apiVersion: '2023-10-16',
+});
+
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      },
+      status: 204
+    });
+  }
+
   try {
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { 
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
-        }, 
-        status: 204 
-      });
+    const signature = req.headers.get('stripe-signature');
+    if (!signature || !webhookSecret) {
+      return new Response('Missing signature or webhook secret', { status: 400 });
     }
 
-    const signature = req.headers.get('stripe-signature');
-    if (!signature || !webhookSecret) return new Response('Missing signature or webhook secret', { status: 400 });
     const body = await req.text();
     let event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     
@@ -69,7 +83,7 @@ serve(async (req) => {
           .eq('stripe_customer_id', subscription.customer as string)
           .limit(1);
         
-        if (customers && customers.length) {
+        if (customers && customers.length > 0) {
           console.log(`Updating subscription status to ${subscription.status} for user ${customers[0].id}`);
           
           const { error } = await supabase.from('subscriptions').update({ 
@@ -94,7 +108,7 @@ serve(async (req) => {
           .eq('stripe_customer_id', subscription.customer as string)
           .limit(1);
         
-        if (customers && customers.length) {
+        if (customers && customers.length > 0) {
           console.log(`Downgrading subscription to free tier for user ${customers[0].id}`);
           
           const { error } = await supabase.from('subscriptions').update({ 
