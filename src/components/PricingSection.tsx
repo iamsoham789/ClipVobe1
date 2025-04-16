@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
@@ -18,7 +17,11 @@ interface PricingTier {
   priceId?: string;
 }
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const STRIPE_BASIC_PRICE_ID = "price_1TJXKaAUtKomR9D73YVtTAAZ";
+const STRIPE_UNLIMITED_PRICE_ID = "price_1TJXLhAUtKomR9D7p6fwvzMi";
+const STRIPE_PUBLISHABLE_KEY = "pk_test_51R4PJrAUtKomR9D7QiJhikXWdXZixuTveAfVSZgkEkPEv7Yrx7mReXUg8zmVWL7ndERZVO7Quvsh4pboh0hmb5Cs00B9Sdc47A";
+
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
 const Pricing = () => {
   const [inView, setInView] = useState(false);
@@ -28,7 +31,6 @@ const Pricing = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Detect if user appears to be from India based on timezone
   useEffect(() => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setIsIndianUser(timezone.includes("Asia/Kolkata") || timezone.includes("India"));
@@ -55,7 +57,7 @@ const Pricing = () => {
       name: "Basic",
       price: { usd: "9", inr: "750" },
       plan: "basic",
-      priceId: import.meta.env.VITE_STRIPE_BASIC_PRICE_ID,
+      priceId: STRIPE_BASIC_PRICE_ID,
       features: [
         { feature: "AI Video Titles", value: "150 titles (30 requests)" },
         { feature: "AI Video Descriptions", value: "25 descriptions (25 requests)" },
@@ -72,7 +74,7 @@ const Pricing = () => {
       name: "Pro",
       price: { usd: "39", inr: "3200" },
       plan: "pro",
-      priceId: import.meta.env.VITE_STRIPE_UNLIMITED_PRICE_ID,
+      priceId: STRIPE_UNLIMITED_PRICE_ID,
       features: [
         { feature: "AI Video Titles", value: "Unlimited titles" },
         { feature: "AI Video Descriptions", value: "Unlimited descriptions" },
@@ -116,13 +118,17 @@ const Pricing = () => {
     toast.info(`Preparing ${tier.name} plan checkout...`);
 
     try {
-      // Create Stripe Checkout Session
+      console.log("Sending checkout request with:", {
+        priceId: tier.priceId,
+        plan: tier.plan,
+        userId: user.id
+      });
+      
       const stripe = await stripePromise;
       if (!stripe) {
         throw new Error("Stripe failed to initialize");
       }
 
-      // Update to use the correct URL for the deployed Edge Function
       const response = await fetch("https://ijplrwyidnrqjlgyhdhs.supabase.co/functions/v1/dynamic-service", {
         method: 'POST',
         headers: {
@@ -138,12 +144,13 @@ const Pricing = () => {
 
       const session = await response.json();
       
+      console.log("Checkout session response:", session);
+      
       if (!session || !session.id) {
         console.error("Checkout session response:", session);
         throw new Error(session.error || "Failed to create checkout session");
       }
 
-      // Redirect to Stripe Checkout
       const result = await stripe.redirectToCheckout({
         sessionId: session.id,
       });
@@ -161,7 +168,6 @@ const Pricing = () => {
 
   return (
     <section id="pricing" ref={sectionRef} className="py-20 bg-gray-900">
-      {/* Pricing Cards */}
       <div className="container mx-auto px-4">
         <h2 className="text-4xl font-bold text-white text-center mb-8">Pricing Plans</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -230,7 +236,6 @@ const Pricing = () => {
         </div>
       </div>
 
-      {/* Features Matrix Table */}
       <div className="container mx-auto px-4 mt-16">
         <h3 className="text-3xl font-bold text-white text-center mb-8">Feature Comparison</h3>
         <div className="overflow-x-auto">
@@ -257,7 +262,6 @@ const Pricing = () => {
         </div>
       </div>
 
-      {/* FAQs */}
       <div className="container mx-auto px-4 mt-16">
         <h3 className="text-3xl font-bold text-white text-center mb-8">Frequently Asked Questions</h3>
         <div className="space-y-6 max-w-2xl mx-auto">

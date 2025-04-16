@@ -5,10 +5,10 @@ import DescriptionGenerator from './DescriptionGenerator';
 import HashtagGenerator from './HashtagGenerator';
 import VideoIdeasGenerator from './VideoIdeasGenerator';
 import VideoScriptGenerator from './VideoScriptGenerator';
-import TweetGenerator from './Tweet Generator';
+import TweetGenerator from './TweetGenerator';
 import YouTubeCommunityPostGenerator from './YouTubeCommunityPostGenerator';
 import RedditPostGenerator from './RedditPostGenerator';
-import LinkedInPostGenerator from './linkedin Post Generator';
+import LinkedInPostGenerator from './LinkedInPostGenerator';
 
 interface DashboardFeaturesProps {
   activeItem: string;
@@ -63,6 +63,7 @@ const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
         return <RedditPostGenerator handleNavigation={handleNavigation} />;
 
       case 'linkedin-post-generator':
+        // Fix the import case to match the component filename (LinkedInPostGenerator instead of 'linkedin Post Generator')
         return <LinkedInPostGenerator handleNavigation={handleNavigation} />;
 
       case 'settings':

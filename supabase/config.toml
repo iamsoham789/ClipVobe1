@@ -6,3 +6,7 @@ verify_jwt = true
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.dynamic-service]
+verify_jwt = true
+
