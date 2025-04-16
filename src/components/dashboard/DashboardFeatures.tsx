@@ -63,7 +63,6 @@ const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
         return <RedditPostGenerator handleNavigation={handleNavigation} />;
 
       case 'linkedin-post-generator':
-        // Fix the import case to match the component filename (LinkedInPostGenerator instead of 'linkedin Post Generator')
         return <LinkedInPostGenerator handleNavigation={handleNavigation} />;
 
       case 'settings':
