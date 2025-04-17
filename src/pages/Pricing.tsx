@@ -58,7 +58,7 @@ const Pricing = () => {
       name: "Basic",
       price: { usd: "9", inr: "750" },
       plan: "basic",
-      priceId: STRIPE_BASIC_PRICE_ID,
+      // priceId removed; backend determines this
       features: [
         { feature: "AI Video Titles", value: "150 titles (30 requests)" },
         { feature: "AI Video Descriptions", value: "25 descriptions (25 requests)" },
@@ -75,7 +75,7 @@ const Pricing = () => {
       name: "Pro",
       price: { usd: "39", inr: "3200" },
       plan: "pro",
-      priceId: STRIPE_UNLIMITED_PRICE_ID,
+      // priceId removed; backend determines this
       features: [
         { feature: "AI Video Titles", value: "Unlimited titles" },
         { feature: "AI Video Descriptions", value: "Unlimited descriptions" },
