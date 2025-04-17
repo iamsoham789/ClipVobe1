@@ -21,3 +21,24 @@ verify_jwt = true
 
 [functions.get-youtube-channel]
 verify_jwt = true
+
+[functions.generate-script]
+verify_jwt = true
+
+[functions.generate-descriptions]
+verify_jwt = true
+
+[functions.generate-description]
+verify_jwt = true
+
+[functions.generate-ideas]
+verify_jwt = true
+
+[functions.generate-hashtags]
+verify_jwt = true
+
+[functions.generate-linkedin-posts]
+verify_jwt = true
+
+[functions.generate-reddit-posts]
+verify_jwt = true
