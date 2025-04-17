@@ -18,12 +18,11 @@ interface PricingTier {
   priceId?: string;
 }
 
-// Hardcoded Stripe price IDs
-const STRIPE_BASIC_PRICE_ID = "price_1TJXKaAUtKomR9D73YVtTAAZ";
-const STRIPE_UNLIMITED_PRICE_ID = "price_1TJXLhAUtKomR9D7p6fwvzMi";
+// Stripe publishable key (used for frontend only)
 const STRIPE_PUBLISHABLE_KEY = "pk_test_51R4PJrAUtKomR9D7QiJhikXWdXZixuTveAfVSZgkEkPEv7Yrx7mReXUg8zmVWL7ndERZVO7Quvsh4pboh0hmb5Cs00B9Sdc47A";
 
 const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
+// NOTE: Stripe price IDs are not used on the frontend; backend determines them securely.
 
 const Pricing = () => {
   const [inView, setInView] = useState(false);
@@ -138,7 +137,6 @@ const Pricing = () => {
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
         body: JSON.stringify({
-          priceId: tier.priceId,
           plan: tier.plan,
           userId: user.id
         }),
