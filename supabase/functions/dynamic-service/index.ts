@@ -8,9 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Hardcoded price IDs as a fallback
-const STRIPE_BASIC_PRICE_ID = 'prod_S7yodj1tTghZaQ';
-const STRIPE_UNLIMITED_PRICE_ID = 'prod_S7yqmreBWn20Bw';
+// No hardcoded price IDs. Use environment variables only.
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -59,11 +57,23 @@ serve(async (req) => {
       STRIPE_UNLIMITED_PRICE_ID: unlimitedPriceId || "not set"
     });
     
-    // Determine the price ID based on tier with fallbacks
+    // Determine the price ID based on tier
     if (body.tier === "basic") {
-      priceId = basicPriceId || STRIPE_BASIC_PRICE_ID;
+      if (!basicPriceId) {
+        return new Response(
+          JSON.stringify({ error: "Missing STRIPE_BASIC_PRICE_ID environment variable" }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      priceId = basicPriceId;
     } else if (body.tier === "pro") {
-      priceId = unlimitedPriceId || STRIPE_UNLIMITED_PRICE_ID;
+      if (!unlimitedPriceId) {
+        return new Response(
+          JSON.stringify({ error: "Missing STRIPE_UNLIMITED_PRICE_ID environment variable" }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      priceId = unlimitedPriceId;
     } else {
       console.error(`Unknown tier: ${body.tier}`);
       return new Response(
