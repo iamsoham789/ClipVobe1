@@ -1,0 +1,16 @@
+{
+  "tasks": {
+    "serve": "deno run --allow-net --allow-env index.ts"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "strict": true,
+    "lib": ["deno.window", "dom"],
+    "checkJs": true
+  },
+  "imports": {
+    "std/": "https://deno.land/std@0.208.0/",
+    "stripe": "npm:stripe@latest",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.39.0"
+  }
+}
