@@ -1,6 +1,6 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { google } from 'https://deno.land/x/google_auth_oauth2@v0.1.0/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,21 +60,25 @@ serve(async (req: Request) => {
       throw new Error('No Google identity found');
     }
 
-    // Initialize the YouTube API client
-    const youtube = google.youtube('v3');
-    
-    // Check the upload status
-    const response = await youtube.videos.list({
-      part: ['status'],
-      id: uploadId,
-      access_token: googleIdentity.access_token,
+    // For YouTube API, we'll use a direct fetch call instead of the non-existent google module
+    const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=status&id=${uploadId}`, {
+      headers: {
+        'Authorization': `Bearer ${googleIdentity.access_token}`,
+        'Content-Type': 'application/json'
+      }
     });
-
-    if (!response.items || response.items.length === 0) {
+    
+    if (!response.ok) {
+      throw new Error(`YouTube API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.items || data.items.length === 0) {
       throw new Error('Upload not found');
     }
 
-    const videoStatus = response.items[0].status;
+    const videoStatus = data.items[0].status;
     if (videoStatus.uploadStatus !== 'processed') {
       throw new Error('Video is still processing');
     }
@@ -82,7 +86,7 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         status: 'success',
-        videoId: response.items[0].id,
+        videoId: data.items[0].id,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

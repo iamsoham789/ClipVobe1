@@ -1,155 +1,108 @@
 
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { Stripe } from "https://esm.sh/stripe@14.21.0?target=deno";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4?target=deno";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import Stripe from "https://esm.sh/stripe@12.0.0?dts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2023-10-16',
-});
-
-// Hardcoded Stripe price IDs for fallback
-const FALLBACK_BASIC_PRICE_ID = "price_1TJXKaAUtKomR9D73YVtTAAZ";
-const FALLBACK_UNLIMITED_PRICE_ID = "price_1TJXLhAUtKomR9D7p6fwvzMi";
+// Hardcoded price IDs as a fallback
+const STRIPE_BASIC_PRICE_ID = 'prod_S7yodj1tTghZaQ';
+const STRIPE_UNLIMITED_PRICE_ID = 'prod_S7yqmreBWn20Bw';
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders, status: 204 });
+    return new Response(null, { headers: corsHeaders });
   }
+
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Get body from request
+    const body = await req.json();
+    console.log("Received request with body:", JSON.stringify(body));
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) throw new Error('Missing Authorization header');
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) throw new Error('Unauthorized');
+    // Check for required fields
+    if (!body.tier) {
+      console.error("Missing 'tier' field in request body");
+      return new Response(
+        JSON.stringify({ error: "Missing required field: tier" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Clone the request and log the body for debugging
-    const reqClone = req.clone();
-    const body = await reqClone.json();
-    console.log("Received request body:", body);
+    // Get Stripe secret key
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeSecretKey) {
+      console.error("STRIPE_SECRET_KEY is not set");
+      return new Response(
+        JSON.stringify({ error: "Internal server error: Missing Stripe configuration" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Initialize Stripe
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: "2023-10-16",
+    });
+
+    // Get the price ID based on the requested tier
+    let priceId;
     
-    // Log environment variables for debugging
+    // Try to get price ID from environment variables first
+    const basicPriceId = Deno.env.get("STRIPE_BASIC_PRICE_ID");
+    const unlimitedPriceId = Deno.env.get("STRIPE_UNLIMITED_PRICE_ID");
+    
     console.log("Environment variables:", {
-      STRIPE_BASIC_PRICE_ID: Deno.env.get('STRIPE_BASIC_PRICE_ID'),
-      STRIPE_UNLIMITED_PRICE_ID: Deno.env.get('STRIPE_UNLIMITED_PRICE_ID')
+      STRIPE_BASIC_PRICE_ID: basicPriceId || "not set",
+      STRIPE_UNLIMITED_PRICE_ID: unlimitedPriceId || "not set"
     });
-
-    // Use the original request to get the body again
-    const { priceId, plan, userId } = await req.json();
     
-    // Detailed validation with logging
-    if (!userId) {
-      console.error("Missing userId in request");
+    // Determine the price ID based on tier with fallbacks
+    if (body.tier === "basic") {
+      priceId = basicPriceId || STRIPE_BASIC_PRICE_ID;
+    } else if (body.tier === "pro") {
+      priceId = unlimitedPriceId || STRIPE_UNLIMITED_PRICE_ID;
+    } else {
+      console.error(`Unknown tier: ${body.tier}`);
       return new Response(
-        JSON.stringify({ error: "Missing userId in request" }), 
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        JSON.stringify({ error: `Invalid tier: ${body.tier}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    if (!plan) {
-      console.error("Missing plan in request");
-      return new Response(
-        JSON.stringify({ error: "Missing plan in request" }), 
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-    
-    if (userId !== user.id) throw new Error('User ID mismatch');
-    
-    // Get price IDs from env vars with fallbacks
-    const basicPriceId = Deno.env.get('STRIPE_BASIC_PRICE_ID') || FALLBACK_BASIC_PRICE_ID;
-    const unlimitedPriceId = Deno.env.get('STRIPE_UNLIMITED_PRICE_ID') || FALLBACK_UNLIMITED_PRICE_ID;
-    
-    // Determine which price ID to use based on the plan
-    let validPriceId = plan === 'basic' ? 
-      basicPriceId : 
-      plan === 'pro' ? 
-        unlimitedPriceId : '';
-    
-    console.log("Using price ID:", {
-      requested: priceId,
-      validated: validPriceId,
-      plan: plan
-    });
-    
-    // If priceId is undefined or doesn't match, use the determined validPriceId
-    if (!priceId || priceId !== validPriceId) {
-      console.log("Using determined price ID instead of requested priceId");
-    }
+    console.log(`Using price ID for ${body.tier} tier:`, priceId);
 
-    const { data: existingCustomer } = await supabase
-      .from('profiles')
-      .select('stripe_customer_id')
-      .eq('id', userId)
-      .maybeSingle();
-
-    let customerId = existingCustomer?.stripe_customer_id;
-
-    if (!customerId && user.email) {
-      const customers = await stripe.customers.list({ 
-        email: user.email, 
-        limit: 1 
-      });
-      if (customers.data.length > 0) {
-        customerId = customers.data[0].id;
-        await supabase
-          .from('profiles')
-          .update({ stripe_customer_id: customerId })
-          .eq('id', userId);
-      }
-    }
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({ 
-        email: user.email, 
-        metadata: { userId } 
-      });
-      customerId = customer.id;
-      await supabase
-        .from('profiles')
-        .update({ stripe_customer_id: customerId })
-        .eq('id', userId);
-    }
-
-    console.log("Creating checkout session with:", {
-      priceId: validPriceId,
-      customer: customerId
-    });
-
+    // Create a Stripe checkout session
     const session = await stripe.checkout.sessions.create({
-      line_items: [{ price: validPriceId, quantity: 1 }],
-      mode: 'subscription',
-      success_url: `${req.headers.get('origin')}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get('origin')}/pricing`,
-      customer: customerId,
-      client_reference_id: userId,
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: "subscription",
+      success_url: `${body.returnUrl || "https://clipvobe.netlify.app/thankyou"}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${body.cancelUrl || "https://clipvobe.netlify.app/pricing"}`,
+      client_reference_id: body.userId,
     });
 
-    console.log("Checkout session created:", session.id);
+    console.log("Checkout session created:", {
+      id: session.id,
+      url: session.url
+    });
 
     return new Response(
-      JSON.stringify({ id: session.id, url: session.url }), 
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
-        status: 200 
-      }
+      JSON.stringify({ sessionId: session.id, url: session.url }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error creating checkout session:', error);
+    console.error("Error in dynamic-service function:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), 
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
-        status: 400 
-      }
+      JSON.stringify({ error: error.message || "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

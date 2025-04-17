@@ -1,6 +1,6 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { google } from 'https://deno.land/x/google_auth_oauth2@v0.1.0/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,23 +55,27 @@ serve(async (req: Request) => {
       throw new Error('No Google identity found');
     }
 
-    // Initialize the YouTube API client
-    const youtube = google.youtube('v3');
-    
-    // Get the channel statistics
-    const response = await youtube.channels.list({
-      part: ['statistics'],
-      mine: true,
-      access_token: googleIdentity.access_token,
+    // Use direct fetch to YouTube API
+    const response = await fetch('https://www.googleapis.com/youtube/v3/channels?part=statistics&mine=true', {
+      headers: {
+        'Authorization': `Bearer ${googleIdentity.access_token}`,
+        'Content-Type': 'application/json'
+      }
     });
 
-    if (!response.items || response.items.length === 0) {
+    if (!response.ok) {
+      throw new Error(`YouTube API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.items || data.items.length === 0) {
       throw new Error('No channel found');
     }
 
     return new Response(
       JSON.stringify({
-        statistics: response.items[0].statistics,
+        statistics: data.items[0].statistics,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

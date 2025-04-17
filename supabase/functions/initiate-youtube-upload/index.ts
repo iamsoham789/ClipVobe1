@@ -1,6 +1,6 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { google } from 'https://deno.land/x/google_auth_oauth2@v0.1.0/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,14 +60,16 @@ serve(async (req: Request) => {
       throw new Error('No Google identity found');
     }
 
-    // Initialize the YouTube API client
-    const youtube = google.youtube('v3');
-    
-    // Create a resumable upload session
-    const response = await youtube.videos.insert({
-      part: ['snippet', 'status'],
-      access_token: googleIdentity.access_token,
-      requestBody: {
+    // Use direct fetch to YouTube API instead of using the google module
+    const response = await fetch('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${googleIdentity.access_token}`,
+        'Content-Type': 'application/json',
+        'X-Upload-Content-Type': 'video/*',
+        'X-Upload-Content-Length': '0'
+      },
+      body: JSON.stringify({
         snippet: {
           title: metadata.title,
           description: metadata.description,
@@ -76,20 +78,25 @@ serve(async (req: Request) => {
         status: {
           privacyStatus: metadata.visibility,
         },
-      },
-    }, {
-      // Set up for resumable upload
-      uploadType: 'resumable',
+      })
     });
 
-    if (!response.headers.get('location')) {
+    if (!response.ok) {
+      throw new Error(`YouTube API error: ${response.status}`);
+    }
+
+    const uploadUrl = response.headers.get('location');
+    if (!uploadUrl) {
       throw new Error('Failed to get upload URL');
     }
 
+    // Extract upload ID from the location header if available
+    const uploadId = new URL(uploadUrl).searchParams.get('upload_id') || '';
+
     return new Response(
       JSON.stringify({
-        uploadUrl: response.headers.get('location'),
-        uploadId: response.headers.get('x-guploader-uploadid'),
+        uploadUrl,
+        uploadId,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
