@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ interface PricingTier {
   priceId?: string;
 }
 
+// Hardcoded Stripe price IDs
 const STRIPE_BASIC_PRICE_ID = "price_1TJXKaAUtKomR9D73YVtTAAZ";
 const STRIPE_UNLIMITED_PRICE_ID = "price_1TJXLhAUtKomR9D7p6fwvzMi";
 const STRIPE_PUBLISHABLE_KEY = "pk_test_51R4PJrAUtKomR9D7QiJhikXWdXZixuTveAfVSZgkEkPEv7Yrx7mReXUg8zmVWL7ndERZVO7Quvsh4pboh0hmb5Cs00B9Sdc47A";

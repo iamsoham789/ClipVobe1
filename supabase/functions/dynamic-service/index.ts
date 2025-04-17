@@ -12,6 +12,10 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
 });
 
+// Hardcoded Stripe price IDs for fallback
+const FALLBACK_BASIC_PRICE_ID = "price_1TJXKaAUtKomR9D73YVtTAAZ";
+const FALLBACK_UNLIMITED_PRICE_ID = "price_1TJXLhAUtKomR9D7p6fwvzMi";
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders, status: 204 });
@@ -31,6 +35,8 @@ serve(async (req) => {
     const reqClone = req.clone();
     const body = await reqClone.json();
     console.log("Received request body:", body);
+    
+    // Log environment variables for debugging
     console.log("Environment variables:", {
       STRIPE_BASIC_PRICE_ID: Deno.env.get('STRIPE_BASIC_PRICE_ID'),
       STRIPE_UNLIMITED_PRICE_ID: Deno.env.get('STRIPE_UNLIMITED_PRICE_ID')
@@ -40,14 +46,6 @@ serve(async (req) => {
     const { priceId, plan, userId } = await req.json();
     
     // Detailed validation with logging
-    if (!priceId) {
-      console.error("Missing priceId in request");
-      return new Response(
-        JSON.stringify({ error: "Missing priceId in request" }), 
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-    
     if (!userId) {
       console.error("Missing userId in request");
       return new Response(
@@ -66,10 +64,11 @@ serve(async (req) => {
     
     if (userId !== user.id) throw new Error('User ID mismatch');
     
-    // Get price IDs from env vars or use hardcoded values as fallback
-    const basicPriceId = Deno.env.get('STRIPE_BASIC_PRICE_ID') || "price_1TJXKaAUtKomR9D73YVtTAAZ";
-    const unlimitedPriceId = Deno.env.get('STRIPE_UNLIMITED_PRICE_ID') || "price_1TJXLhAUtKomR9D7p6fwvzMi";
+    // Get price IDs from env vars with fallbacks
+    const basicPriceId = Deno.env.get('STRIPE_BASIC_PRICE_ID') || FALLBACK_BASIC_PRICE_ID;
+    const unlimitedPriceId = Deno.env.get('STRIPE_UNLIMITED_PRICE_ID') || FALLBACK_UNLIMITED_PRICE_ID;
     
+    // Determine which price ID to use based on the plan
     let validPriceId = plan === 'basic' ? 
       basicPriceId : 
       plan === 'pro' ? 
@@ -78,13 +77,12 @@ serve(async (req) => {
     console.log("Using price ID:", {
       requested: priceId,
       validated: validPriceId,
-      match: priceId === validPriceId
+      plan: plan
     });
     
-    if (priceId !== validPriceId) {
-      console.log("Price ID mismatch, but continuing with requested priceId");
-      // Instead of throwing an error, use the sent priceId
-      validPriceId = priceId;
+    // If priceId is undefined or doesn't match, use the determined validPriceId
+    if (!priceId || priceId !== validPriceId) {
+      console.log("Using determined price ID instead of requested priceId");
     }
 
     const { data: existingCustomer } = await supabase
