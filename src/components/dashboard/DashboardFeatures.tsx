@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useEffect, useState } from "react";
 import TitleGenerator from "./TitleGenerator";
@@ -17,6 +18,14 @@ interface DashboardFeaturesProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
 
+// Define the props for the Settings component
+interface SettingsProps {
+  usageStats: any;
+  featureOptions: any[];
+  tier: string;
+  handleNavigation: (itemId: string, subItemId?: string) => void;
+}
+
 const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
   activeItem,
   activeSubItem,
@@ -28,6 +37,34 @@ const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
   useEffect(() => {
     setRenderKey(Date.now());
   }, [activeItem, activeSubItem]);
+
+  // Mock data for Settings component
+  const mockUsageStats = {
+    titles: { used: 0, limit: 10 },
+    descriptions: { used: 0, limit: 10 },
+    hashtags: { used: 0, limit: 10 },
+    ideas: { used: 0, limit: 5 },
+    scripts: { used: 0, limit: 5 },
+    tweets: { used: 0, limit: 10 },
+    linkedin: { used: 0, limit: 10 },
+    reddit: { used: 0, limit: 10 },
+    youtube: { used: 0, limit: 10 }
+  };
+
+  const mockFeatureOptions = [
+    { id: 'titles', name: 'Video Titles' },
+    { id: 'descriptions', name: 'Video Descriptions' },
+    { id: 'hashtags', name: 'Hashtags & Tags' },
+    { id: 'ideas', name: 'Video Ideas' },
+    { id: 'scripts', name: 'Video Scripts' },
+    { id: 'tweets', name: 'Tweets' },
+    { id: 'linkedin', name: 'LinkedIn Posts' },
+    { id: 'reddit', name: 'Reddit Posts' },
+    { id: 'youtube', name: 'YouTube Posts' }
+  ];
+
+  // Mock tier data
+  const mockTier = "basic";
 
   return (
     <div key={renderKey} className="flex-1 p-6 overflow-y-auto">
@@ -148,7 +185,14 @@ const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
           <YouTubeCommunityPostGenerator handleNavigation={handleNavigation} />
         )}
 
-      {activeItem === "settings" && <Settings />}
+      {activeItem === "settings" && 
+        <Settings 
+          usageStats={mockUsageStats} 
+          featureOptions={mockFeatureOptions} 
+          tier={mockTier} 
+          handleNavigation={handleNavigation} 
+        />
+      }
     </div>
   );
 };
