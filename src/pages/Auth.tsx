@@ -56,11 +56,13 @@ const Auth = () => {
           email,
           password,
           options: {
+            emailRedirectTo: 'https://clipvobe.netlify.app/dashboard', // Ensure confirmation link redirects to dashboard
             data: {
               name: name || email.split('@')[0],
             },
           },
         });
+        // NOTE: To increase confirmation link validity, update 'Confirmation link expiry' in Supabase Auth > Settings > Policies.
         
         if (error) throw error;
         
