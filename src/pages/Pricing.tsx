@@ -128,8 +128,8 @@ const Pricing = () => {
         cancelUrl: window.location.origin + "/pricing"
       };
       console.log("Payload being sent to backend:", payload);
-      if (!payload.tier || !payload.userId) {
-        toast.error("Checkout error: Missing tier or userId. Please reload and try again.");
+      if (!payload.plan || !payload.userId) {
+        toast.error("Checkout error: Missing plan or userId. Please reload and try again.");
         setLoading(null);
         return;
       }
