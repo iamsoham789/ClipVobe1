@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Copy, Home } from 'lucide-react';
 import { Button } from '../ui/button';
