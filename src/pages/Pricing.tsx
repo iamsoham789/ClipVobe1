@@ -121,7 +121,7 @@ const Pricing = () => {
     try {
       // Build and log the actual payload sent to the backend
       const payload = {
-        tier: tier.plan,
+        plan: tier.plan,
         priceId: tier.priceId,
         userId: user.id,
         returnUrl: window.location.origin + "/thankyou",
