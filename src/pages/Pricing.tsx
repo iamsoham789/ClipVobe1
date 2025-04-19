@@ -121,15 +121,15 @@ const Pricing = () => {
     try {
       // Build and log the actual payload sent to the backend
       const payload = {
-        plan: tier.plan,
+        tier: tier.plan,
         priceId: tier.priceId,
         userId: user.id,
         returnUrl: window.location.origin + "/thankyou",
         cancelUrl: window.location.origin + "/pricing"
       };
       console.log("Payload being sent to backend:", payload);
-      if (!payload.plan || !payload.userId) {
-        toast.error("Checkout error: Missing plan or userId. Please reload and try again.");
+      if (!payload.tier || !payload.userId) {
+        toast.error("Checkout error: Missing tier or userId. Please reload and try again.");
         setLoading(null);
         return;
       }
