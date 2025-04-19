@@ -132,10 +132,9 @@ const LinkedInPostGenerator: React.FC<LinkedInPostGeneratorProps> = ({ handleNav
           <Button
             onClick={generatePost}
             disabled={!prompt.trim() || loading}
-            isLoading={loading}
             className="w-full"
           >
-            Generate LinkedIn Posts
+            {loading ? "Generating..." : "Generate LinkedIn Posts"}
           </Button>
         </div>
 

@@ -58,7 +58,7 @@ const Pricing = () => {
       name: "Basic",
       price: { usd: "9", inr: "750" },
       plan: "basic",
-      // priceId removed; backend determines this
+      // NOTE: No hardcoded priceId here as it should be determined by the backend
       features: [
         { feature: "AI Video Titles", value: "150 titles (30 requests)" },
         { feature: "AI Video Descriptions", value: "25 descriptions (25 requests)" },
@@ -75,7 +75,7 @@ const Pricing = () => {
       name: "Pro",
       price: { usd: "39", inr: "3200" },
       plan: "pro",
-      // priceId removed; backend determines this
+      // NOTE: No hardcoded priceId here as it should be determined by the backend
       features: [
         { feature: "AI Video Titles", value: "Unlimited titles" },
         { feature: "AI Video Descriptions", value: "Unlimited descriptions" },
@@ -119,11 +119,20 @@ const Pricing = () => {
     toast.info(`Preparing ${tier.name} plan checkout...`);
 
     try {
-      console.log("Sending checkout request with:", {
-        priceId: tier.priceId,
-        plan: tier.plan,
-        userId: user.id
-      });
+      // Create payload with tier property to match backend expectations
+      const payload = {
+        tier: tier.plan,
+        userId: user.id,
+        returnUrl: window.location.origin + "/thankyou",
+        cancelUrl: window.location.origin + "/pricing"
+      };
+      console.log("Payload being sent to backend:", payload);
+      
+      if (!payload.tier || !payload.userId) {
+        toast.error("Checkout error: Missing tier or userId. Please reload and try again.");
+        setLoading(null);
+        return;
+      }
       
       const stripe = await stripePromise;
       if (!stripe) {
@@ -136,10 +145,7 @@ const Pricing = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
-        body: JSON.stringify({
-          plan: tier.plan,
-          userId: user.id
-        }),
+        body: JSON.stringify(payload),
       });
 
       const session = await response.json();
