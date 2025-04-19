@@ -119,11 +119,19 @@ const Pricing = () => {
     toast.info(`Preparing ${tier.name} plan checkout...`);
 
     try {
-      console.log("Sending checkout request with:", {
-        priceId: tier.priceId,
-        plan: tier.plan,
-        userId: user.id
-      });
+      // Build and log the actual payload sent to the backend
+      const payload = {
+        tier: tier.plan,
+        userId: user.id,
+        returnUrl: window.location.origin + "/thankyou",
+        cancelUrl: window.location.origin + "/pricing"
+      };
+      console.log("Payload being sent to backend:", payload);
+      if (!payload.tier || !payload.userId) {
+        toast.error("Checkout error: Missing tier or userId. Please reload and try again.");
+        setLoading(null);
+        return;
+      }
       
       const stripe = await stripePromise;
       if (!stripe) {
@@ -136,12 +144,7 @@ const Pricing = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
-        body: JSON.stringify({
-          tier: tier.plan,
-          userId: user.id,
-          returnUrl: window.location.origin + "/thankyou",
-          cancelUrl: window.location.origin + "/pricing"
-        }),
+        body: JSON.stringify(payload),
       });
 
       const session = await response.json();
