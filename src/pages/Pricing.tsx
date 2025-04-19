@@ -137,8 +137,10 @@ const Pricing = () => {
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
         body: JSON.stringify({
-          plan: tier.plan,
-          userId: user.id
+          tier: tier.plan,
+          userId: user.id,
+          returnUrl: window.location.origin + "/thankyou",
+          cancelUrl: window.location.origin + "/pricing"
         }),
       });
 

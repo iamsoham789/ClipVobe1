@@ -26,3 +26,7 @@ dist-ssr
 # Tempo files
 **/tempobook/dynamic/
 **/tempobook/storyboards/
+
+# Ignore environment variable files
+.env
+supabase/functions/*/.env
