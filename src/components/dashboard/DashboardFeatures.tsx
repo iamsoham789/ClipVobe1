@@ -11,18 +11,11 @@ import LinkedInPostGenerator from "./LinkedInPostGenerator";
 import RedditPostGenerator from "./RedditPostGenerator";
 import YouTubeCommunityPostGenerator from "./YouTubeCommunityPostGenerator";
 import Settings from "./Settings";
+import { FeatureOption } from "../../types/dashboard";
 
 interface DashboardFeaturesProps {
   activeItem: string;
   activeSubItem: string | null;
-  handleNavigation: (itemId: string, subItemId?: string) => void;
-}
-
-// Define the props for the Settings component
-interface SettingsProps {
-  usageStats: any;
-  featureOptions: any[];
-  tier: string;
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
 
@@ -40,27 +33,27 @@ const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
 
   // Mock data for Settings component
   const mockUsageStats = {
-    titles: { used: 0, limit: 10 },
-    descriptions: { used: 0, limit: 10 },
-    hashtags: { used: 0, limit: 10 },
-    ideas: { used: 0, limit: 5 },
-    scripts: { used: 0, limit: 5 },
-    tweets: { used: 0, limit: 10 },
-    linkedin: { used: 0, limit: 10 },
-    reddit: { used: 0, limit: 10 },
-    youtube: { used: 0, limit: 10 }
+    titles: 0,
+    descriptions: 0,
+    hashtags: 0,
+    ideas: 0,
+    scripts: 0,
+    tweets: 0,
+    linkedin: 0,
+    reddit: 0,
+    youtube: 0
   };
 
-  const mockFeatureOptions = [
-    { id: 'titles', name: 'Video Titles' },
-    { id: 'descriptions', name: 'Video Descriptions' },
-    { id: 'hashtags', name: 'Hashtags & Tags' },
-    { id: 'ideas', name: 'Video Ideas' },
-    { id: 'scripts', name: 'Video Scripts' },
-    { id: 'tweets', name: 'Tweets' },
-    { id: 'linkedin', name: 'LinkedIn Posts' },
-    { id: 'reddit', name: 'Reddit Posts' },
-    { id: 'youtube', name: 'YouTube Posts' }
+  const mockFeatureOptions: FeatureOption[] = [
+    { id: 'titles', key: 'titles', label: 'Video Titles', supabaseFunction: 'generate-titles', navId: 'title-generator' },
+    { id: 'descriptions', key: 'descriptions', label: 'Video Descriptions', supabaseFunction: 'generate-description', navId: 'description-generator' },
+    { id: 'hashtags', key: 'hashtags', label: 'Hashtags & Tags', supabaseFunction: 'generate-hashtags', navId: 'hashtag-generator' },
+    { id: 'ideas', key: 'ideas', label: 'Video Ideas', supabaseFunction: 'generate-ideas', navId: 'ideas-generator' },
+    { id: 'scripts', key: 'scripts', label: 'Video Scripts', supabaseFunction: 'generate-script', navId: 'script-generator' },
+    { id: 'tweets', key: 'tweets', label: 'Tweets', supabaseFunction: 'generate-tweets', navId: 'platform-post-generator' },
+    { id: 'linkedin', key: 'linkedin', label: 'LinkedIn Posts', supabaseFunction: 'generate-linkedin-posts', navId: 'platform-post-generator' },
+    { id: 'reddit', key: 'reddit', label: 'Reddit Posts', supabaseFunction: 'generate-reddit-posts', navId: 'platform-post-generator' },
+    { id: 'youtube', key: 'youtube', label: 'YouTube Posts', supabaseFunction: 'generate-youtube-posts', navId: 'platform-post-generator' }
   ];
 
   // Mock tier data
