@@ -1,23 +1,19 @@
-
-import React from 'react';
-import TitleGenerator from './TitleGenerator';
-import DescriptionGenerator from './DescriptionGenerator';
-import HashtagGenerator from './HashtagGenerator';
-import VideoIdeasGenerator from './VideoIdeasGenerator';
-import VideoScriptGenerator from './VideoScriptGenerator';
-import TweetGenerator from './TweetGenerator';
-import YouTubeCommunityPostGenerator from './YouTubeCommunityPostGenerator';
-import RedditPostGenerator from './RedditPostGenerator';
-import LinkedInPostGenerator from './LinkedInPostGenerator';
+import React from "react";
+import { useEffect, useState } from "react";
+import TitleGenerator from "./TitleGenerator";
+import DescriptionGenerator from "./DescriptionGenerator";
+import HashtagGenerator from "./HashtagGenerator";
+import VideoIdeasGenerator from "./VideoIdeasGenerator";
+import VideoScriptGenerator from "./VideoScriptGenerator";
+import TweetGenerator from "./TweetGenerator";
+import LinkedInPostGenerator from "./LinkedInPostGenerator";
+import RedditPostGenerator from "./RedditPostGenerator";
+import YouTubeCommunityPostGenerator from "./YouTubeCommunityPostGenerator";
+import Settings from "./Settings";
 
 interface DashboardFeaturesProps {
   activeItem: string;
-  activeSubItem: string;
-  handleNavigation: (itemId: string, subItemId?: string) => void;
-}
-
-// Define common type for components
-interface FeatureComponentProps {
+  activeSubItem: string | null;
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
 
@@ -26,72 +22,135 @@ const DashboardFeatures: React.FC<DashboardFeaturesProps> = ({
   activeSubItem,
   handleNavigation,
 }) => {
-  console.log('DashboardFeatures rendering with:', {
-    activeItem,
-    activeSubItem,
-    handleNavigation: !!handleNavigation,
-  });
+  const [renderKey, setRenderKey] = useState(Date.now());
 
-  try {
-    switch (activeItem) {
-      case 'dashboard':
-        return <div>Dashboard Overview (Placeholder)</div>;
+  // Reset component when active item changes (helps with state reset)
+  useEffect(() => {
+    setRenderKey(Date.now());
+  }, [activeItem, activeSubItem]);
 
-      case 'video-titles':
-        return <TitleGenerator handleNavigation={handleNavigation} />;
+  return (
+    <div key={renderKey} className="flex-1 p-6 overflow-y-auto">
+      {activeItem === "dashboard" && !activeSubItem && (
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="glass-card p-6 rounded-xl">
+              <h3 className="text-xl font-semibold text-white mb-4">Quick Actions</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleNavigation("title-generator")}
+                  className="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors"
+                >
+                  Generate Video Titles
+                </button>
+                <button
+                  onClick={() => handleNavigation("description-generator")}
+                  className="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors"
+                >
+                  Generate Video Descriptions
+                </button>
+                <button
+                  onClick={() => handleNavigation("hashtag-generator")}
+                  className="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors"
+                >
+                  Generate Hashtags & Tags
+                </button>
+              </div>
+            </div>
 
-      case 'video-descriptions':
-        return <DescriptionGenerator handleNavigation={handleNavigation} />;
+            <div className="glass-card p-6 rounded-xl">
+              <h3 className="text-xl font-semibold text-white mb-4">Content Planning</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleNavigation("ideas-generator")}
+                  className="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors"
+                >
+                  Find Video Ideas
+                </button>
+                <button
+                  onClick={() => handleNavigation("script-generator")}
+                  className="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors"
+                >
+                  Generate Video Scripts
+                </button>
+              </div>
+            </div>
 
-      case 'hashtags':
-        return <HashtagGenerator handleNavigation={handleNavigation} />;
-
-      case 'video-ideas':
-        return <VideoIdeasGenerator handleNavigation={handleNavigation} />;
-
-      case 'video-scripts':
-        console.log('About to render VideoScriptGenerator');
-        return <VideoScriptGenerator handleNavigation={handleNavigation} />;
-
-      case 'tweet-generator':
-        return <TweetGenerator handleNavigation={handleNavigation} />;
-
-      case 'youtube-community-post-generator':
-        return <YouTubeCommunityPostGenerator handleNavigation={handleNavigation} />;
-
-      case 'reddit-post-generator':
-        return <RedditPostGenerator handleNavigation={handleNavigation} />;
-
-      case 'linkedin-post-generator':
-        return <LinkedInPostGenerator handleNavigation={handleNavigation} />;
-
-      case 'settings':
-        // Settings component placeholder
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Settings</h2>
-            <div className="glass-card rounded-xl p-6">
-              <p className="text-gray-400">Nothing Here...</p>
+            <div className="glass-card p-6 rounded-xl">
+              <h3 className="text-xl font-semibold text-white mb-4">Platform Posts</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleNavigation("platform-post-generator", "tweet")}
+                  className="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors"
+                >
+                  Generate Tweets
+                </button>
+                <button
+                  onClick={() => handleNavigation("platform-post-generator", "linkedin")}
+                  className="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors"
+                >
+                  Generate LinkedIn Posts
+                </button>
+                <button
+                  onClick={() => handleNavigation("platform-post-generator", "reddit")}
+                  className="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors"
+                >
+                  Generate Reddit Posts
+                </button>
+                <button
+                  onClick={() => handleNavigation("platform-post-generator", "youtube")}
+                  className="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors"
+                >
+                  Generate YouTube Community Posts
+                </button>
+              </div>
             </div>
           </div>
-        );
+        </div>
+      )}
 
-      default:
-        console.log('No matching case for activeItem:', activeItem);
-        return (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            Select a feature from the sidebar
-          </div>
-        );
-    }
-  } catch (error) {
-    console.error('Error in DashboardFeatures:', error);
-    return (
-      <div className="text-red-500 p-4">
-        An error occurred while rendering this component. Please check the console for details.
-      </div>
-    );
-  }
+      {activeItem === "title-generator" && (
+        <TitleGenerator handleNavigation={handleNavigation} />
+      )}
+
+      {activeItem === "description-generator" && (
+        <DescriptionGenerator handleNavigation={handleNavigation} />
+      )}
+
+      {activeItem === "hashtag-generator" && (
+        <HashtagGenerator handleNavigation={handleNavigation} />
+      )}
+
+      {activeItem === "ideas-generator" && (
+        <VideoIdeasGenerator handleNavigation={handleNavigation} />
+      )}
+
+      {activeItem === "script-generator" && (
+        <VideoScriptGenerator handleNavigation={handleNavigation} />
+      )}
+
+      {activeItem === "platform-post-generator" && activeSubItem === "tweet" && (
+        <TweetGenerator handleNavigation={handleNavigation} />
+      )}
+
+      {activeItem === "platform-post-generator" &&
+        activeSubItem === "linkedin" && (
+          <LinkedInPostGenerator handleNavigation={handleNavigation} />
+        )}
+
+      {activeItem === "platform-post-generator" &&
+        activeSubItem === "reddit" && (
+          <RedditPostGenerator handleNavigation={handleNavigation} />
+        )}
+
+      {activeItem === "platform-post-generator" &&
+        activeSubItem === "youtube" && (
+          <YouTubeCommunityPostGenerator handleNavigation={handleNavigation} />
+        )}
+
+      {activeItem === "settings" && <Settings />}
+    </div>
+  );
 };
 
 export default DashboardFeatures;
