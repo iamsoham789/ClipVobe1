@@ -16,7 +16,7 @@ interface DashboardFeaturesProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
 
-// Define prop types for each component to fix TypeScript errors
+// Define common type for components
 interface FeatureComponentProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
