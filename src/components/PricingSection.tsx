@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
@@ -15,7 +14,6 @@ interface PricingTier {
   features: { feature: string; value: string }[];
   popular?: boolean;
   plan?: "free" | "basic" | "pro";
-  priceId?: string;
 }
 
 // Stripe publishable key (used for frontend only)
@@ -58,7 +56,6 @@ const Pricing = () => {
       name: "Basic",
       price: { usd: "9", inr: "750" },
       plan: "basic",
-      // NOTE: No hardcoded priceId here as it should be determined by the backend
       features: [
         { feature: "AI Video Titles", value: "150 titles (30 requests)" },
         { feature: "AI Video Descriptions", value: "25 descriptions (25 requests)" },
@@ -75,7 +72,6 @@ const Pricing = () => {
       name: "Pro",
       price: { usd: "39", inr: "3200" },
       plan: "pro",
-      // NOTE: No hardcoded priceId here as it should be determined by the backend
       features: [
         { feature: "AI Video Titles", value: "Unlimited titles" },
         { feature: "AI Video Descriptions", value: "Unlimited descriptions" },
@@ -115,50 +111,59 @@ const Pricing = () => {
       return;
     }
 
-    setLoading(tier.plan || null);
+    if (!tier.plan) {
+      toast.error("Invalid plan selected");
+      return;
+    }
+
+    setLoading(tier.plan);
     toast.info(`Preparing ${tier.name} plan checkout...`);
 
     try {
-      // Create payload with tier property to match backend expectations
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      
+      if (!accessToken) {
+        throw new Error("Authentication error. Please sign in again.");
+      }
+
       const payload = {
         tier: tier.plan,
         userId: user.id,
-        returnUrl: window.location.origin + "/thankyou",
-        cancelUrl: window.location.origin + "/pricing"
+        returnUrl: `${window.location.origin}/thankyou`,
+        cancelUrl: `${window.location.origin}/pricing`
       };
-      console.log("Payload being sent to backend:", payload);
       
-      if (!payload.tier || !payload.userId) {
-        toast.error("Checkout error: Missing tier or userId. Please reload and try again.");
-        setLoading(null);
-        return;
+      console.log("Sending payload to dynamic-service:", payload);
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dynamic-service`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! Status: ${response.status}`);
       }
+
+      const data = await response.json();
+      console.log("Checkout session response:", data);
       
+      if (!data || !data.id) {
+        throw new Error("Invalid checkout session response");
+      }
+
       const stripe = await stripePromise;
       if (!stripe) {
         throw new Error("Stripe failed to initialize");
       }
 
-      const response = await fetch("https://ijplrwyidnrqjlgyhdhs.supabase.co/functions/v1/dynamic-service", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const session = await response.json();
-      
-      console.log("Checkout session response:", session);
-      
-      if (!session || !session.id) {
-        console.error("Checkout session response:", session);
-        throw new Error(session.error || "Failed to create checkout session");
-      }
-
       const result = await stripe.redirectToCheckout({
-        sessionId: session.id,
+        sessionId: data.id,
       });
 
       if (result.error) {
@@ -166,7 +171,7 @@ const Pricing = () => {
       }
     } catch (error) {
       console.error("Payment error:", error);
-      toast.error("Payment processing failed. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Payment processing failed. Please try again.");
     } finally {
       setLoading(null);
     }

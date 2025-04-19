@@ -8,8 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// No hardcoded price IDs. Use environment variables only.
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -21,11 +19,15 @@ serve(async (req) => {
     const body = await req.json();
     console.log("Received request with body:", JSON.stringify(body));
 
-    // Check for required fields
-    if (!body.tier) {
-      console.error("Missing 'tier' field in request body");
+    // Check for required fields more thoroughly
+    if (!body.tier || !body.userId) {
+      const missingFields = [];
+      if (!body.tier) missingFields.push('tier');
+      if (!body.userId) missingFields.push('userId');
+      
+      console.error(`Missing required fields: ${missingFields.join(', ')}`);
       return new Response(
-        JSON.stringify({ error: "Missing required field: tier" }),
+        JSON.stringify({ error: `Missing required fields: ${missingFields.join(', ')}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -45,43 +47,33 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    // Get the price ID based on the requested tier
-    let priceId = body.priceId;
+    // Determine the price ID based on the requested tier
+    let priceId;
     
-    // Try to get price ID from environment variables first
-    const basicPriceId = Deno.env.get("STRIPE_BASIC_PRICE_ID");
-    const unlimitedPriceId = Deno.env.get("STRIPE_UNLIMITED_PRICE_ID");
-    
-    console.log("Environment variables:", {
-      STRIPE_BASIC_PRICE_ID: basicPriceId || "not set",
-      STRIPE_UNLIMITED_PRICE_ID: unlimitedPriceId || "not set"
-    });
-    
-    // If priceId is not provided by frontend, fallback to tier logic
-    if (!priceId) {
-      if (body.tier === "basic") {
-        if (!basicPriceId) {
-          return new Response(
-            JSON.stringify({ error: "Missing STRIPE_BASIC_PRICE_ID environment variable" }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        priceId = basicPriceId;
-      } else if (body.tier === "pro") {
-        if (!unlimitedPriceId) {
-          return new Response(
-            JSON.stringify({ error: "Missing STRIPE_UNLIMITED_PRICE_ID environment variable" }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        priceId = unlimitedPriceId;
-      } else {
-        console.error(`Unknown tier: ${body.tier}`);
+    if (body.tier === "basic") {
+      priceId = Deno.env.get("STRIPE_BASIC_PRICE_ID");
+      if (!priceId) {
+        console.error("STRIPE_BASIC_PRICE_ID environment variable is not set");
         return new Response(
-          JSON.stringify({ error: `Invalid tier: ${body.tier}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: "Missing STRIPE_BASIC_PRICE_ID environment variable" }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+    } else if (body.tier === "pro") {
+      priceId = Deno.env.get("STRIPE_UNLIMITED_PRICE_ID");
+      if (!priceId) {
+        console.error("STRIPE_UNLIMITED_PRICE_ID environment variable is not set");
+        return new Response(
+          JSON.stringify({ error: "Missing STRIPE_UNLIMITED_PRICE_ID environment variable" }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      console.error(`Unknown tier: ${body.tier}`);
+      return new Response(
+        JSON.stringify({ error: `Invalid tier: ${body.tier}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
     console.log(`Using price ID for ${body.tier} tier:`, priceId);
@@ -107,7 +99,7 @@ serve(async (req) => {
     });
 
     return new Response(
-      JSON.stringify({ sessionId: session.id, url: session.url }),
+      JSON.stringify({ id: session.id, url: session.url }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
