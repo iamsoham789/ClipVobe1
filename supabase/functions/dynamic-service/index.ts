@@ -46,7 +46,7 @@ serve(async (req) => {
     });
 
     // Get the price ID based on the requested tier
-    let priceId;
+    let priceId = body.priceId;
     
     // Try to get price ID from environment variables first
     const basicPriceId = Deno.env.get("STRIPE_BASIC_PRICE_ID");
@@ -57,29 +57,31 @@ serve(async (req) => {
       STRIPE_UNLIMITED_PRICE_ID: unlimitedPriceId || "not set"
     });
     
-    // Determine the price ID based on tier
-    if (body.tier === "basic") {
-      if (!basicPriceId) {
+    // If priceId is not provided by frontend, fallback to tier logic
+    if (!priceId) {
+      if (body.tier === "basic") {
+        if (!basicPriceId) {
+          return new Response(
+            JSON.stringify({ error: "Missing STRIPE_BASIC_PRICE_ID environment variable" }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        priceId = basicPriceId;
+      } else if (body.tier === "pro") {
+        if (!unlimitedPriceId) {
+          return new Response(
+            JSON.stringify({ error: "Missing STRIPE_UNLIMITED_PRICE_ID environment variable" }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        priceId = unlimitedPriceId;
+      } else {
+        console.error(`Unknown tier: ${body.tier}`);
         return new Response(
-          JSON.stringify({ error: "Missing STRIPE_BASIC_PRICE_ID environment variable" }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: `Invalid tier: ${body.tier}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      priceId = basicPriceId;
-    } else if (body.tier === "pro") {
-      if (!unlimitedPriceId) {
-        return new Response(
-          JSON.stringify({ error: "Missing STRIPE_UNLIMITED_PRICE_ID environment variable" }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      priceId = unlimitedPriceId;
-    } else {
-      console.error(`Unknown tier: ${body.tier}`);
-      return new Response(
-        JSON.stringify({ error: `Invalid tier: ${body.tier}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
     
     console.log(`Using price ID for ${body.tier} tier:`, priceId);

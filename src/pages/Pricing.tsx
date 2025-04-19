@@ -58,7 +58,7 @@ const Pricing = () => {
       name: "Basic",
       price: { usd: "9", inr: "750" },
       plan: "basic",
-      // priceId removed; backend determines this
+      priceId: process.env.REACT_APP_STRIPE_BASIC_PRICE_ID || "<YOUR_STRIPE_BASIC_PRICE_ID>",
       features: [
         { feature: "AI Video Titles", value: "150 titles (30 requests)" },
         { feature: "AI Video Descriptions", value: "25 descriptions (25 requests)" },
@@ -75,7 +75,7 @@ const Pricing = () => {
       name: "Pro",
       price: { usd: "39", inr: "3200" },
       plan: "pro",
-      // priceId removed; backend determines this
+      priceId: process.env.REACT_APP_STRIPE_UNLIMITED_PRICE_ID || "<YOUR_STRIPE_UNLIMITED_PRICE_ID>",
       features: [
         { feature: "AI Video Titles", value: "Unlimited titles" },
         { feature: "AI Video Descriptions", value: "Unlimited descriptions" },
@@ -122,6 +122,7 @@ const Pricing = () => {
       // Build and log the actual payload sent to the backend
       const payload = {
         tier: tier.plan,
+        priceId: tier.priceId,
         userId: user.id,
         returnUrl: window.location.origin + "/thankyou",
         cancelUrl: window.location.origin + "/pricing"
