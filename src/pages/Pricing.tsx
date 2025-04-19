@@ -58,7 +58,7 @@ const Pricing = () => {
       name: "Basic",
       price: { usd: "9", inr: "750" },
       plan: "basic",
-      priceId: process.env.REACT_APP_STRIPE_BASIC_PRICE_ID || "prod_S7yodj1tTghZaQ",
+      priceId: process.env.REACT_APP_STRIPE_BASIC_PRICE_ID || "price_1RDirIAUtKomR9D7ASceungt",
       features: [
         { feature: "AI Video Titles", value: "150 titles (30 requests)" },
         { feature: "AI Video Descriptions", value: "25 descriptions (25 requests)" },
