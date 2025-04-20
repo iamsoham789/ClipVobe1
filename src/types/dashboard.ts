@@ -12,9 +12,20 @@ export interface NavItem {
 
 export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'unpaid';
 
+export type FeatureType =
+  | "titles"
+  | "descriptions"
+  | "hashtags"
+  | "ideas"
+  | "scripts"
+  | "tweets"
+  | "youtubePosts"
+  | "redditPosts"
+  | "linkedinPosts";
+
 export interface FeatureOption {
   id: string;
-  key: string;
+  key: FeatureType;
   label: string;
   supabaseFunction: string;
   navId: string;
