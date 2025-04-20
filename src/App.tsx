@@ -15,6 +15,7 @@ import PaymentSuccessHandler from "./components/PaymentSuccessHandler";
 import Help from "./pages/Help";
 import Contact from "./pages/Contact";
 import Settings from "./components/dashboard/Settings";
+import ThankYou from "./pages/thankyou";
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
           <Route path="/payment-success" element={<Dashboard />} />
           <Route path="/help" element={<Help />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/thankyou" element={<ThankYou />} />
           <Route path="/settings" element={<Settings usageStats={{}} featureOptions={[]} tier={""} handleNavigation={function (itemId: string, subItemId?: string): void {
             throw new Error("Function not implemented.");
           } } />} />

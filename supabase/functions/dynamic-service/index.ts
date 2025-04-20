@@ -93,7 +93,7 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${body.returnUrl || "https://clipvobe.netlify.app/thankyou"}?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${body.returnUrl || "https://clipvobe.netlify.app/thankyou"}?session_id={CHECKOUT_SESSION_ID}&plan=${body.tier}`,
       cancel_url: `${body.cancelUrl || "https://clipvobe.netlify.app/pricing"}`,
       client_reference_id: body.userId,
     });
