@@ -47,27 +47,32 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
+    // Get price IDs from environment variables
+    const basicPriceId = Deno.env.get("STRIPE_BASIC_PRICE_ID");
+    if (!basicPriceId) {
+      console.error("STRIPE_BASIC_PRICE_ID environment variable is not set");
+      return new Response(
+        JSON.stringify({ error: "Missing STRIPE_BASIC_PRICE_ID environment variable" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const unlimitedPriceId = Deno.env.get("STRIPE_UNLIMITED_PRICE_ID");
+    if (!unlimitedPriceId) {
+      console.error("STRIPE_UNLIMITED_PRICE_ID environment variable is not set");
+      return new Response(
+        JSON.stringify({ error: "Missing STRIPE_UNLIMITED_PRICE_ID environment variable" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     // Determine the price ID based on the requested tier
     let priceId;
     
     if (body.tier === "basic") {
-      priceId = Deno.env.get("STRIPE_BASIC_PRICE_ID");
-      if (!priceId) {
-        console.error("STRIPE_BASIC_PRICE_ID environment variable is not set");
-        return new Response(
-          JSON.stringify({ error: "Missing STRIPE_BASIC_PRICE_ID environment variable" }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      priceId = basicPriceId;
     } else if (body.tier === "pro") {
-      priceId = Deno.env.get("STRIPE_UNLIMITED_PRICE_ID");
-      if (!priceId) {
-        console.error("STRIPE_UNLIMITED_PRICE_ID environment variable is not set");
-        return new Response(
-          JSON.stringify({ error: "Missing STRIPE_UNLIMITED_PRICE_ID environment variable" }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      priceId = unlimitedPriceId;
     } else {
       console.error(`Unknown tier: ${body.tier}`);
       return new Response(

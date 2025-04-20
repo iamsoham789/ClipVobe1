@@ -11,3 +11,11 @@ export interface NavItem {
 }
 
 export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'unpaid';
+
+export interface FeatureOption {
+  id: string;
+  key: string;
+  label: string;
+  supabaseFunction: string;
+  navId: string;
+}

@@ -15,17 +15,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2023-10-16',
-});
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders, status: 204 });
   }
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeSecretKey) {
+      throw new Error('STRIPE_SECRET_KEY environment variable is not set');
+    }
+    
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2023-10-16',
+    });
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    if (!supabaseUrl) {
+      throw new Error('SUPABASE_URL environment variable is not set');
+    }
+    
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseKey) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is not set');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const authHeader = req.headers.get('Authorization');
@@ -38,10 +51,18 @@ serve(async (req) => {
     if (!priceId || !userId || !plan) throw new Error('Missing required fields');
     if (userId !== user.id) throw new Error('User ID mismatch');
 
-    let validPriceId = plan === 'basic' ? 
-      Deno.env.get('STRIPE_BASIC_PRICE_ID') : 
-      plan === 'pro' ? 
-        Deno.env.get('STRIPE_UNLIMITED_PRICE_ID') : '';
+    // Get price IDs from environment variables
+    const basicPriceId = Deno.env.get('STRIPE_BASIC_PRICE_ID');
+    if (!basicPriceId) {
+      throw new Error('STRIPE_BASIC_PRICE_ID environment variable is not set');
+    }
+    
+    const unlimitedPriceId = Deno.env.get('STRIPE_UNLIMITED_PRICE_ID');
+    if (!unlimitedPriceId) {
+      throw new Error('STRIPE_UNLIMITED_PRICE_ID environment variable is not set');
+    }
+    
+    let validPriceId = plan === 'basic' ? basicPriceId : plan === 'pro' ? unlimitedPriceId : '';
     if (priceId !== validPriceId) throw new Error('Price ID mismatch');
 
     const { data: existingCustomer } = await supabase

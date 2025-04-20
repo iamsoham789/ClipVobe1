@@ -17,12 +17,25 @@ serve(async (req) => {
   }
   
   try {
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeSecretKey) {
+      throw new Error('STRIPE_SECRET_KEY environment variable is not set');
+    }
+    
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16',
     });
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    if (!supabaseUrl) {
+      throw new Error('SUPABASE_URL environment variable is not set');
+    }
+    
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseKey) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is not set');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     const { sessionId, userId } = await req.json();
@@ -30,6 +43,8 @@ serve(async (req) => {
     if (!sessionId || !userId) {
       throw new Error('Missing sessionId or userId');
     }
+    
+    console.log(`Processing payment verification for user ${userId} with session ${sessionId}`);
     
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     
@@ -57,14 +72,27 @@ serve(async (req) => {
       const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
       const priceId = subscription.items.data[0].price.id;
       
+      // Get price IDs from environment variables
+      const basicPriceId = Deno.env.get('STRIPE_BASIC_PRICE_ID');
+      if (!basicPriceId) {
+        throw new Error('STRIPE_BASIC_PRICE_ID environment variable is not set');
+      }
+      
+      const unlimitedPriceId = Deno.env.get('STRIPE_UNLIMITED_PRICE_ID');
+      if (!unlimitedPriceId) {
+        throw new Error('STRIPE_UNLIMITED_PRICE_ID environment variable is not set');
+      }
+      
       let tier;
-      if (priceId === Deno.env.get('STRIPE_BASIC_PRICE_ID')) {
+      if (priceId === basicPriceId) {
         tier = 'basic';
-      } else if (priceId === Deno.env.get('STRIPE_UNLIMITED_PRICE_ID')) {
+      } else if (priceId === unlimitedPriceId) {
         tier = 'pro';
       } else {
         tier = 'unknown';
       }
+      
+      console.log(`User ${userId} subscribed to ${tier} plan with subscription ${session.subscription}`);
       
       const { error: subscriptionError } = await supabase
         .from('subscriptions')
