@@ -9,9 +9,11 @@ import { useSubscription } from '../../hooks/use-subscription';
 import { useNavigate } from 'react-router-dom';
 import RestrictedFeatureRedirect from './RestrictedFeatureRedirect';
 
-const RedditPostGenerator: React.FC<{
+interface RedditPostGeneratorProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
-}> = ({ handleNavigation }) => {
+}
+
+const RedditPostGenerator: React.FC<RedditPostGeneratorProps> = ({ handleNavigation }) => {
   const [postTopic, setPostTopic] = useState('');
   const [generatedPost, setGeneratedPost] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);

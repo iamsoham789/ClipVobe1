@@ -12,6 +12,10 @@ interface LinkedInPostGeneratorProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
 
+interface LinkedInPostGeneratorProps {
+  handleNavigation: (itemId: string, subItemId?: string) => void;
+}
+
 const LinkedInPostGenerator: React.FC<LinkedInPostGeneratorProps> = ({ handleNavigation }) => {
   const [loading, setLoading] = useState(false);
   const [prompt, setPrompt] = useState('');

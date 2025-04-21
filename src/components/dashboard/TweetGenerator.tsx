@@ -12,6 +12,10 @@ interface TweetGeneratorProps {
   handleNavigation: (itemId: string, subItemId?: string) => void;
 }
 
+interface TweetGeneratorProps {
+  handleNavigation: (itemId: string, subItemId?: string) => void;
+}
+
 const TweetGenerator: React.FC<TweetGeneratorProps> = ({ handleNavigation }) => {
   const [loading, setLoading] = useState(false);
   const [prompt, setPrompt] = useState('');
