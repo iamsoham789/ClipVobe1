@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,8 +13,7 @@ interface SubscriptionDetails {
 interface SubscriptionRow {
   tier: string;
   status: string;
-  current_period_end: string | null;
-  expires_at: string | null; // Added for backward compatibility
+  expires_at: string | null; // Subscription expiration timestamp
 }
 
 export function useSubscription(userId?: string) {
@@ -40,11 +38,17 @@ export function useSubscription(userId?: string) {
         // Explicitly type the query result
         const { data: subscriptionData, error: subError } = await supabase
           .from('subscriptions')
-          .select('tier, status, current_period_end, expires_at')
+          .select('tier, status, expires_at')
           .eq('user_id', userId)
           .maybeSingle() as { data: SubscriptionRow | null; error: any };
 
         if (subError) {
+          // Ignore missing-column errors (e.g., current_period_end missing)
+          if ((subError as any).code === '42703') {
+            console.warn('Ignoring missing-column error in subscriptions:', (subError as any).message);
+            setLoading(false);
+            return;
+          }
           console.error('Supabase error fetching subscription:', subError);
           throw subError;
         }
@@ -77,7 +81,7 @@ export function useSubscription(userId?: string) {
         }
 
         // Use the typed data directly, with fallbacks for different column names
-        const expiresAt = subscriptionData.current_period_end || subscriptionData.expires_at;
+        const expiresAt = subscriptionData.expires_at;
         
         setSubscription({
           tier: subscriptionData.tier as SubscriptionTier, // Cast to SubscriptionTier

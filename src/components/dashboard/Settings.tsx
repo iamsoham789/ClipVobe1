@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "../../components/ui/button";
 import {
@@ -73,7 +72,7 @@ const Settings: React.FC<SettingsProps> = ({
         // Get subscription details from Supabase
         const { data, error } = await supabase
           .from("subscriptions")
-          .select("*")
+          .select("tier, status, expires_at")
           .eq("user_id", user.id)
           .single();
 
@@ -391,9 +390,9 @@ const Settings: React.FC<SettingsProps> = ({
                       ? "Active"
                       : "Inactive"}{" "}
                     • Renews{" "}
-                    {subscriptionDetails.current_period_end
+                    {subscriptionDetails.expires_at
                       ? new Date(
-                          subscriptionDetails.current_period_end,
+                          subscriptionDetails.expires_at,
                         ).toLocaleDateString()
                       : "soon"}
                   </p>
